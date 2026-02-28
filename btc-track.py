@@ -15,7 +15,7 @@ import sys
 import os
 import argparse
 
-ADDRESSES_FILE = os.path.expanduser("~/.btc-addresses.json")
+ADDRESSES_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "addresses.json")
 
 TOR_PROXY = {
     "http": "socks5h://127.0.0.1:9050",
