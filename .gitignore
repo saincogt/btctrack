@@ -1,5 +1,5 @@
 # Address data — never commit this
-*.json
+addresses.json
 
 # Python
 __pycache__/

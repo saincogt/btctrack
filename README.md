@@ -55,7 +55,23 @@ python btc-track.py check --no-tor
 
 ## Address storage
 
-Addresses are saved to `~/.btc-addresses.json` (excluded from git via `.gitignore`).
+Addresses are saved to `addresses.json` in the project directory (excluded from git).  
+A template is provided — copy it to get started:
+
+```bash
+cp addresses.sample.json addresses.json
+```
+
+Then edit `addresses.json` directly, or use the CLI commands to add/remove entries.  
+The format is a simple JSON array of address strings:
+
+```json
+[
+  "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
+  "1A1zP1eP5QGefi2DMPTfTL5SLmv7Divfna",
+  "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy"
+]
+```
 
 ---
 
