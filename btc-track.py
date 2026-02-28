@@ -1,14 +1,17 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 btc-track - Track Bitcoin address balances privately via Tor
 
 Usage:
-  python btc-track.py add <address> [address2 ...]   # Add addresses
+  python btc-track.py add <address> [address2 ...]    # Add addresses
   python btc-track.py remove <address> [address2 ...]  # Remove addresses
-  python btc-track.py list                            # List tracked addresses
-  python btc-track.py check                           # Check all balances
-  python btc-track.py check --no-tor                  # Skip Tor (less private)
+  python btc-track.py list                             # List tracked addresses
+  python btc-track.py check                            # Check all balances
+  python btc-track.py check --no-tor                   # Skip Tor (less private)
 """
+
+from __future__ import print_function
 
 import json
 import sys
@@ -43,10 +46,10 @@ def cmd_add(args):
     addresses = load_addresses()
     for addr in args.addresses:
         if addr in addresses:
-            print(f"  already tracked: {addr}")
+            print("  already tracked: {}".format(addr))
         else:
             addresses.append(addr)
-            print(f"  added: {addr}")
+            print("  added: {}".format(addr))
     save_addresses(addresses)
 
 
@@ -54,10 +57,10 @@ def cmd_remove(args):
     addresses = load_addresses()
     for addr in args.addresses:
         if addr not in addresses:
-            print(f"  not found: {addr}")
+            print("  not found: {}".format(addr))
         else:
             addresses.remove(addr)
-            print(f"  removed: {addr}")
+            print("  removed: {}".format(addr))
     save_addresses(addresses)
 
 
@@ -67,8 +70,8 @@ def cmd_list(args):
         print("No addresses tracked. Use: python btc-track.py add <address>")
         return
     for i, addr in enumerate(addresses, 1):
-        print(f"  {i:>3}.  {addr}")
-    print(f"\n  Total: {len(addresses)} address(es)")
+        print("  {:>3}.  {}".format(i, addr))
+    print("\n  Total: {} address(es)".format(len(addresses)))
 
 
 def fetch_balance(addr, proxies, base_url):
@@ -78,7 +81,7 @@ def fetch_balance(addr, proxies, base_url):
         print("Missing dependency. Run:  pip install requests PySocks")
         sys.exit(1)
 
-    url = f"{base_url}/api/address/{addr}"
+    url = "{}/api/address/{}".format(base_url, addr)
     resp = requests.get(url, proxies=proxies, timeout=30)
     resp.raise_for_status()
     data = resp.json()
@@ -104,13 +107,17 @@ def cmd_check(args):
     base_url = MEMPOOL_ONION if use_tor else MEMPOOL_CLEARNET
 
     if use_tor:
-        print("🧅 Querying via Tor (.onion) — your IP is hidden\n")
+        print("Querying via Tor (.onion) -- your IP is hidden\n")
     else:
-        print("⚠️  Querying without Tor — your IP is visible to mempool.space\n")
+        print("WARNING: Querying without Tor -- your IP is visible to mempool.space\n")
 
     col_addr = 45
-    print(f"  {'Address':<{col_addr}} {'Confirmed (BTC)':>16} {'Unconfirmed':>14}  {'TXs':>6}")
-    print("  " + "─" * (col_addr + 42))
+    header = "  {:<{w}} {:>16} {:>14}  {:>6}".format(
+        "Address", "Confirmed (BTC)", "Unconfirmed", "TXs", w=col_addr
+    )
+    divider = "  " + "-" * (col_addr + 42)
+    print(header)
+    print(divider)
 
     total_confirmed = 0
     total_unconfirmed = 0
@@ -123,20 +130,23 @@ def cmd_check(args):
             total_unconfirmed += unconfirmed
             btc = confirmed / 1e8
             ubtc = unconfirmed / 1e8
-            ustr = f"{ubtc:>+.8f}" if unconfirmed != 0 else ""
-            print(f"  {addr:<{col_addr}} {btc:>16.8f} {ustr:>14}  {tx_count:>6}")
+            ustr = "{:>+.8f}".format(ubtc) if unconfirmed != 0 else ""
+            print("  {:<{w}} {:>16.8f} {:>14}  {:>6}".format(
+                addr, btc, ustr, tx_count, w=col_addr
+            ))
         except Exception as e:
-            print(f"  {addr:<{col_addr}} {'ERROR':>16}  ({e})")
+            print("  {:<{w}} {:>16}  ({})".format(addr, "ERROR", e, w=col_addr))
             errors += 1
 
-    print("  " + "─" * (col_addr + 42))
+    print(divider)
     total_btc = total_confirmed / 1e8
     total_ubtc = total_unconfirmed / 1e8
-    ustr = f"{total_ubtc:>+.8f}" if total_unconfirmed != 0 else ""
-    print(f"  {'TOTAL':<{col_addr}} {total_btc:>16.8f} {ustr:>14}")
+    ustr = "{:>+.8f}".format(total_ubtc) if total_unconfirmed != 0 else ""
+    print("  {:<{w}} {:>16.8f} {:>14}".format("TOTAL", total_btc, ustr, w=col_addr))
 
     if errors:
-        print(f"\n  ⚠️  {errors} address(es) failed. Tor may not be running (brew install tor && brew services start tor)")
+        print("\n  WARNING: {} address(es) failed. "
+              "Tor may not be running (brew install tor && brew services start tor)".format(errors))
 
 
 def main():
@@ -145,7 +155,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=__doc__,
     )
-    sub = parser.add_subparsers(dest="command", required=True)
+    sub = parser.add_subparsers(dest="command")
 
     p_add = sub.add_parser("add", help="Add one or more addresses to track")
     p_add.add_argument("addresses", nargs="+")
@@ -159,8 +169,13 @@ def main():
     p_check.add_argument("--no-tor", action="store_true", help="Skip Tor proxy (less private)")
 
     args = parser.parse_args()
+    if not args.command:
+        parser.print_help()
+        sys.exit(1)
+
     {"add": cmd_add, "remove": cmd_remove, "list": cmd_list, "check": cmd_check}[args.command](args)
 
 
 if __name__ == "__main__":
     main()
+
