@@ -9,7 +9,9 @@
 # <swiftbar.hideSwiftBar>true</swiftbar.hideSwiftBar>
 
 SCRIPT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-PYTHON="$(command -v python3 || command -v python)"
+# Use absolute path — SwiftBar runs with restricted PATH
+PYTHON="/opt/homebrew/bin/python3"
+[ -x "$PYTHON" ] || PYTHON="$(command -v python3 || command -v python)"
 BTC_SCRIPT="$SCRIPT_DIR/btc-track.py"
 
 # Run check and capture output
@@ -31,8 +33,10 @@ echo "---"
 # ── Dropdown content ─────────────────────────────────────────────────────────
 if [ -z "$TOTAL" ] || [ "$EXIT_CODE" -ne 0 ]; then
   echo "Error fetching data"
-  echo "Make sure Tor is running | color=#ff6b6b"
-  echo "brew services start tor | bash=/bin/bash param1=-c param2='brew services start tor' terminal=false"
+  # Show first error line for diagnosis
+  ERRMSG=$(echo "$OUTPUT" | grep -v "^$" | head -1)
+  echo "${ERRMSG} | color=#ff6b6b size=11"
+  echo "Start Tor | bash=/opt/homebrew/bin/brew param1=services param2=start param3=tor terminal=false refresh=true"
 else
   # Print each address row (between dividers, skip header/total)
   echo "$OUTPUT" | awk '
