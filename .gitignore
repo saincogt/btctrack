@@ -1,5 +1,6 @@
-# Address data — never commit this
+# Address data — never commit these
 addresses.json
+plugins/btc-addresses.json
 
 # Python
 __pycache__/
