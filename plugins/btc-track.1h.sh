@@ -55,8 +55,7 @@ else
       btc   = substr(line, 67, 16); gsub(/[[:space:]]/, "", btc)
       short = substr(addr,1,8) "..." substr(addr,length(addr)-3,4)
       display = (label != "") ? label : short
-      tooltip = (label != "") ? label ": " addr : addr
-      printf "%s    %s BTC | tooltip=%s\n", display, btc, tooltip
+      printf "%s    %s BTC | tooltip=%s\n", display, btc, addr
     }
   '
   echo "---"
