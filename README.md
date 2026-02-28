@@ -1,8 +1,8 @@
 # btc-track
 
-Privately track Bitcoin address balances from the command line.
+Privately track Bitcoin address balances — CLI, Mac menu bar, and phone browser.
 
-All queries are routed through **Tor** to a `.onion` endpoint — no clearnet request, no IP leakage.  
+All queries are routed through **Tor** to a `.onion` endpoint.  
 Address list is stored locally and never leaves your machine.
 
 ---
@@ -10,7 +10,6 @@ Address list is stored locally and never leaves your machine.
 ## Setup
 
 ```bash
-# Install dependencies
 pip install -r requirements.txt
 
 # Start Tor (macOS)
@@ -19,14 +18,18 @@ brew install tor && brew services start tor
 
 ---
 
-## Usage
+## CLI usage
 
 ```bash
-# Add one or more addresses
-python btc-track.py add <addr1> [addr2 ...]
+# Add address (with optional label and note)
+python btc-track.py add <addr> -l "Cold storage" -n "Ledger"
 
 # Remove an address
 python btc-track.py remove <addr>
+
+# Set/update label or note for an existing address
+python btc-track.py label <addr> "New label"
+python btc-track.py note  <addr> "New note"
 
 # List tracked addresses
 python btc-track.py list
@@ -41,35 +44,71 @@ python btc-track.py check --no-tor
 ### Example output
 
 ```
-🧅 Querying via Tor (.onion) — your IP is hidden
+Querying via Tor (.onion) -- your IP is hidden
 
-  Address                                        Confirmed (BTC)    Unconfirmed     TXs
-  ─────────────────────────────────────────────────────────────────────────────────────
-  bc1q...xxxx                                         0.12345678                     12
-  1A1z...xxxx                                         0.50000000   +0.01000000        5
-  ─────────────────────────────────────────────────────────────────────────────────────
-  TOTAL                                               0.62345678   +0.01000000
+  Address                                       Label                 Confirmed (BTC)    Unconfirmed     TXs
+  -----------------------------------------------------------------------------------------------------------
+  bc1q...xxxx                                   Cold storage               0.12345678                     12
+  1A1z...xxxx                                   Exchange                   0.50000000   +0.01000000        5
+  -----------------------------------------------------------------------------------------------------------
+  TOTAL                                                                    0.62345678   +0.01000000
 ```
+
+---
+
+## Mac menu bar (xbar / SwiftBar)
+
+Shows total BTC in the menu bar, per-address breakdown on click. Auto-refreshes.
+
+1. Install [xbar](https://xbarapp.com) or [SwiftBar](https://swiftbar.app)
+2. Symlink the plugin into the plugins directory:
+   ```bash
+   # xbar
+   ln -s "$(pwd)/btc-track.1h.sh" ~/Library/Application\ Support/xbar/plugins/
+
+   # SwiftBar
+   ln -s "$(pwd)/btc-track.1h.sh" ~/Library/Application\ Support/SwiftBar/plugins/
+   ```
+3. The filename controls refresh interval — rename to change it:
+   - `btc-track.30m.sh` → every 30 minutes
+   - `btc-track.1h.sh`  → every hour
+
+---
+
+## Phone / browser (local network)
+
+Runs a local web server on your Mac. Your phone accesses it over Wi-Fi.  
+Queries still go through Tor — your phone IP never touches mempool.space.
+
+```bash
+python btc-server.py              # http://0.0.0.0:8765
+python btc-server.py --port 9000  # custom port
+python btc-server.py --refresh 10 # refresh cache every 10 min (default: 5)
+```
+
+Open `http://<your-mac-ip>:8765` on your phone.  
+*(Find Mac IP: System Settings → Wi-Fi → Details)*
 
 ---
 
 ## Address storage
 
-Addresses are saved to `addresses.json` in the project directory (excluded from git).  
-A template is provided — copy it to get started:
+Addresses are saved to `addresses.json` (excluded from git).  
+Copy the template to get started:
 
 ```bash
 cp addresses.sample.json addresses.json
 ```
 
-Then edit `addresses.json` directly, or use the CLI commands to add/remove entries.  
-The format is a simple JSON array of address strings:
+Format — each entry supports `address`, `label`, and `note`:
 
 ```json
 [
-  "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-  "1A1zP1eP5QGefi2DMPTfTL5SLmv7Divfna",
-  "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy"
+  {
+    "address": "bc1q...",
+    "label": "Cold storage",
+    "note": "Ledger hardware wallet"
+  }
 ]
 ```
 
@@ -77,6 +116,6 @@ The format is a simple JSON array of address strings:
 
 ## Privacy notes
 
-- Default mode queries `mempool.space` via its `.onion` address over Tor — the server only sees a Tor exit node, never your real IP.
-- Tor must be running locally on port `9050`.
-- Never commit your address list to a public repo.
+- Default mode uses Tor + `.onion` endpoint — server sees only a Tor exit node.
+- Tor must be running on port `9050`.
+- `addresses.json` is gitignored — never commit it to a public repo.
