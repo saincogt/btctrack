@@ -123,47 +123,37 @@ Open `http://<your-mac-ip>:8765` on your phone.
 ]
 ```
 
-#### Field Reference
+**Fields:**
+- `address` (required): Bitcoin address
+- `label` (optional): Display name (if empty, shows truncated address)
+- `group` (optional): Hierarchy path - use `"Wallet/Account"` or just `"Wallet"`
+- `order` (optional): Display priority (lower number = appears first, default 9999)
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| `address` | ✅ Yes | Bitcoin address |
-| `label` | ❌ No | Display name (if empty, shows truncated address) |
-| `group` | ❌ No | Hierarchy: `"Wallet/Account"` or `"Wallet"` |
-| `order` | ❌ No | Display priority (lower = first, default 9999) |
+**v2.7 Hierarchy:**
+- **3-level**: `"group": "Trezor/HODL"` → displays as Trezor > HODL > Address
+- **2-level**: `"group": "Personal"` → displays as Personal > Address
+- **Custom order**: Add `"order": 1` to show important wallets first
 
-**Note:** The `note` field is **not supported** by SwiftBar plugin (CLI only).
-
-#### v2.7+ Hierarchy
-
-**3-level format:** `"group": "Trezor/HODL"`  
-**2-level format:** `"group": "Personal"`
-
-**Display example:**
+**Example display:**
 ```
 Trezor (order=1)
-  3.50000000 BTC
-  
+  3.50 BTC
   Personal
-    0.80000000 BTC
+    0.80 BTC
     └─ Cold Storage
-    
   HODL
-    2.70000000 BTC
+    2.70 BTC
     └─ Long-term
-
 ---
-
 Cold Wallet (order=2)
+  1.20 BTC
   └─ Income
-      └─ Mining rewards
+      └─ Mining
 ```
 
-**Quick migration from v2.6:**
-- `"Trezor HODL"` → `"Trezor/HODL"` (change space to `/`)
-- Add `"order": 1` for priority sorting (optional)
+**Migrating from v2.6:** Change `"Trezor HODL"` → `"Trezor/HODL"`, add `"order": 1` (optional)
 
-See [MIGRATION_v2.7.md](MIGRATION_v2.7.md) for detailed upgrade guide.
+**Note:** The `note` field is not supported by SwiftBar plugin (CLI only)
 
 ---
 
