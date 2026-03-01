@@ -126,15 +126,13 @@ Open `http://<your-mac-ip>:8765` on your phone.
 **Fields:**
 - `address` (required): Bitcoin address
 - `label` (optional): Display name (if empty, shows truncated address)
-- `group` (optional): Hierarchy path - use `"Wallet/Account"` or just `"Wallet"`
+- `group` (optional): Organize addresses into hierarchy
+  - **3-level**: `"Wallet/Account"` (e.g. `"Trezor/HODL"`)
+  - **2-level**: `"Wallet"` (e.g. `"Personal"`)
+  - Empty: appears in "Ungrouped"
 - `order` (optional): Display priority (lower number = appears first, default 9999)
 
-**v2.7 Hierarchy:**
-- **3-level**: `"group": "Trezor/HODL"` → displays as Trezor > HODL > Address
-- **2-level**: `"group": "Personal"` → displays as Personal > Address
-- **Custom order**: Add `"order": 1` to show important wallets first
-
-**Example display:**
+**Hierarchy example:**
 ```
 Trezor (order=1)
   3.50 BTC
@@ -150,8 +148,6 @@ Cold Wallet (order=2)
   └─ Income
       └─ Mining
 ```
-
-**Migrating from v2.6:** Change `"Trezor HODL"` → `"Trezor/HODL"`, add `"order": 1` (optional)
 
 **Note:** The `note` field is not supported by SwiftBar plugin (CLI only)
 

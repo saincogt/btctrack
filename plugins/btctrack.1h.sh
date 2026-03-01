@@ -1,6 +1,6 @@
 #!/bin/bash
 # <swiftbar.title>BTC Track</swiftbar.title>
-# <swiftbar.version>2.7</swiftbar.version>
+# <swiftbar.version>1.0.0</swiftbar.version>
 # <swiftbar.desc>Bitcoin address balance tracker via Tor. 3-level hierarchy with custom ordering.</swiftbar.desc>
 # <swiftbar.hideAbout>true</swiftbar.hideAbout>
 # <swiftbar.hideRunInTerminal>false</swiftbar.hideRunInTerminal>
@@ -18,7 +18,7 @@
 #   - Random delays 0.5-2s between queries (prevents timing correlation)
 #   - Address list stored locally only (never transmitted)
 #
-# HIERARCHY (v2.7)
+# HIERARCHY
 #   - 3-level structure: Wallet / Account / Address
 #   - Use "group": "Wallet/Account" (e.g. "Trezor/HODL")
 #   - Custom order: add "order": 1 to JSON entries (lower = higher priority)
