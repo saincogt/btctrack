@@ -1,5 +1,43 @@
 # Changelog
 
+## v2.7 (2026-03-01)
+
+### 🎉 Major Features
+- **3-Level Hierarchy**: Organize addresses as Wallet → Account → Address
+  - Use `"group": "Wallet/Account"` format (e.g. `"Trezor/HODL"`)
+  - Old 2-level format `"group": "Personal"` still works (backward compatible)
+  - Visual hierarchy with proper indentation in menu dropdown
+  
+- **Custom Ordering**: Control display order with `order` field
+  - Add `"order": 1` to JSON entries (lower number = higher priority)
+  - Wallets and accounts sort by order first, then alphabetically
+  - Default order is 9999 (appears last)
+  - Example: `order=1` for important wallets, `order=99` for watching addresses
+
+### 🔧 Improvements
+- Per-wallet totals displayed prominently with bold styling
+- Per-account subtotals shown under each account  
+- Better visual separation between wallets (separator lines)
+- Addresses maintain JSON file order within groups
+- Proper indentation for 3-level structure (-- for 2-level, ---- for 3-level)
+
+### 📚 Documentation
+- Created [GUIDE_v2.7.md](GUIDE_v2.7.md) - Complete usage guide (8KB)
+- Created [MIGRATION_v2.7.md](MIGRATION_v2.7.md) - Upgrade instructions (5KB)
+- Created [UPGRADE_v2.5_说明.md](UPGRADE_v2.5_说明.md) - Chinese quick start guide
+- Added sample config `.btcaddresses.sample.v2.7.json`
+- Updated README with hierarchy examples
+
+### ⚙️ Technical
+- Refactored organize.py to support 3-level structure with nested defaultdict
+- Parse script now extracts `order` field from JSON (default 9999)
+- Display logic rewritten to handle WALLET/ACCOUNT/ADDRESS markers
+- Wallet and account sorting by minimum order value within group
+- Full backward compatibility with v2.4-v2.6 configs
+- Code expanded from 398 to 471 lines
+
+---
+
 ## v2.6 (2026-03-01)
 
 ### ✨ Improved

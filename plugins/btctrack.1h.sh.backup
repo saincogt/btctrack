@@ -1,7 +1,7 @@
 #!/bin/bash
 # <swiftbar.title>BTC Track</swiftbar.title>
-# <swiftbar.version>2.7</swiftbar.version>
-# <swiftbar.desc>Bitcoin address balance tracker via Tor. 3-level hierarchy with custom ordering.</swiftbar.desc>
+# <swiftbar.version>2.6</swiftbar.version>
+# <swiftbar.desc>Bitcoin address balance tracker via Tor. Privacy-focused with randomized queries.</swiftbar.desc>
 # <swiftbar.hideAbout>true</swiftbar.hideAbout>
 # <swiftbar.hideRunInTerminal>false</swiftbar.hideRunInTerminal>
 # <swiftbar.hideLastUpdated>true</swiftbar.hideLastUpdated>
@@ -18,7 +18,7 @@
 #   - Random delays 0.5-2s between queries (prevents timing correlation)
 #   - Address list stored locally only (never transmitted)
 #
-# HIERARCHY (v2.7)
+# HIERARCHY (v2.5+)
 #   - 3-level structure: Wallet / Account / Address
 #   - Use "group": "Wallet/Account" (e.g. "Trezor/HODL")
 #   - Custom order: add "order": 1 to JSON entries (lower = higher priority)
@@ -230,7 +230,7 @@ PYEOF
 
 # ── Fetch balance for each address via Tor (fallback: clearnet) ───────────────
 # Privacy: random query order + random delays to prevent timing correlation
-while IFS=$'\t' read -r idx addr label group order; do
+while IFS=$'\t' read -r idx addr label group; do
   [ -z "$addr" ] && continue
   # Convert placeholders back to empty strings
   [ "$label" = "---" ] && label=""
@@ -259,97 +259,45 @@ print(c['funded_txo_sum'] - c['spent_txo_sum'] + m['funded_txo_sum'] - m['spent_
     SATS="ERROR"
   fi
 
-  printf '%s|%s|%s|%s|%s|%s\n' "$idx" "$addr" "$label" "$group" "$order" "$SATS" >>"$WORK/results.txt"
+  printf '%s|%s|%s|%s|%s\n' "$idx" "$addr" "$label" "$group" "$SATS" >>"$WORK/results.txt"
 done <"$WORK/addrs_shuffled.tsv"
 
-# ── Compute total BTC and organize by 3-level hierarchy ──────────────────────
+# ── Compute total BTC and organize by groups ─────────────────────────────────
 cat >"$WORK/organize.py" <<'PYEOF'
 import sys
 from collections import defaultdict
 
-# Structure: wallets -> accounts -> addresses
-wallets = defaultdict(lambda: defaultdict(list))
-wallet_order = {}  # Track min order per wallet
-account_order = {}  # Track min order per account
+groups = defaultdict(list)
 total_all = 0
 
 for line in open(sys.argv[1]):
     parts = line.strip().split('|')
-    if len(parts) == 6:
-        idx, addr, label, group, order, sats = parts
-        
-        # Parse group: "Wallet/Account" or just "Wallet"
-        if '/' in group:
-            wallet, account = group.split('/', 1)
-        else:
-            wallet = group if group else "Ungrouped"
-            account = ""
-        
-        # Track minimum order for sorting
-        order_val = int(order)
-        wallet_key = wallet
-        account_key = (wallet, account)
-        
-        if wallet_key not in wallet_order:
-            wallet_order[wallet_key] = order_val
-        else:
-            wallet_order[wallet_key] = min(wallet_order[wallet_key], order_val)
-        
-        if account_key not in account_order:
-            account_order[account_key] = order_val
-        else:
-            account_order[account_key] = min(account_order[account_key], order_val)
-        
-        # Store: (original_idx, addr, label, order, sats)
-        wallets[wallet][account].append((int(idx), addr, label, order_val, sats))
-        
+    if len(parts) == 5:
+        idx, addr, label, group, sats = parts
+        group_name = group if group else "Ungrouped"
+        groups[group_name].append((int(idx), addr, label, sats))
         try:
             total_all += int(sats)
         except ValueError:
             pass
 
-# Sort wallets by order, then alphabetically (Ungrouped last)
-sorted_wallets = sorted(wallets.keys(), 
-                       key=lambda w: (w == "Ungrouped", wallet_order.get(w, 9999), w))
-
-for wallet in sorted_wallets:
-    accounts = wallets[wallet]
+# Output: groups sorted, with Ungrouped last
+for grp in sorted(groups.keys(), key=lambda x: (x == "Ungrouped", x)):
+    # Sort addresses by original index within each group
+    groups[grp].sort(key=lambda x: x[0])
     
-    # Calculate wallet total
-    wallet_total = 0
-    for account in accounts:
-        for idx, addr, label, order, sats in accounts[account]:
-            try:
-                wallet_total += int(sats)
-            except ValueError:
-                pass
+    # Calculate group total
+    group_total = 0
+    for idx, addr, label, sats in groups[grp]:
+        try:
+            group_total += int(sats)
+        except ValueError:
+            pass
     
-    # Output wallet header
-    print("WALLET:" + wallet + "|" + str(wallet_total))
-    
-    # Sort accounts by order, then alphabetically (empty account = default, goes first)
-    sorted_accounts = sorted(accounts.keys(),
-                           key=lambda a: (a != "", account_order.get((wallet, a), 9999), a))
-    
-    for account in sorted_accounts:
-        # Sort addresses by original index to maintain user's order
-        addresses = sorted(accounts[account], key=lambda x: x[0])
-        
-        # Calculate account total
-        account_total = 0
-        for idx, addr, label, order, sats in addresses:
-            try:
-                account_total += int(sats)
-            except ValueError:
-                pass
-        
-        # Output account header (if not empty)
-        if account:
-            print("ACCOUNT:" + account + "|" + str(account_total))
-        
-        # Output addresses
-        for idx, addr, label, order, sats in addresses:
-            print("ADDRESS:" + addr + "|" + label + "|" + sats)
+    # Output: GROUP:name|total_sats
+    print("GROUP:" + grp + "|" + str(group_total))
+    for idx, addr, label, sats in groups[grp]:
+        print(addr + "|" + label + "|" + sats)
 
 print("TOTAL:" + str(total_all))
 PYEOF
@@ -366,70 +314,49 @@ HAS_ERROR="${HAS_ERROR:-0}"
 echo "| sfimage=bitcoinsign.circle.fill color=#f7931a"
 echo "---"
 
-# ── Dropdown: organized by 3-level hierarchy (Wallet > Account > Address) ────
-CURRENT_WALLET=""
-CURRENT_ACCOUNT=""
+# ── Dropdown: organized by groups ─────────────────────────────────────────────
+CURRENT_GROUP=""
+GROUP_TOTAL=0
 
 while IFS= read -r line; do
-  if [[ "$line" =~ ^WALLET: ]]; then
-    # Parse wallet name and total: WALLET:name|total_sats
-    WALLET_LINE="${line#WALLET:}"
-    IFS='|' read -r CURRENT_WALLET WALLET_TOTAL_SATS <<<"$WALLET_LINE"
-    
-    # Separator between wallets
-    [ -n "$LAST_WAS_WALLET" ] && echo "---"
-    
-    # Display wallet header
-    WALLET_BTC=$("$PYTHON3" -c "print('{:.8f}'.format($WALLET_TOTAL_SATS/1e8))" 2>/dev/null)
-    echo "${CURRENT_WALLET} | color=#5DA3FA size=15 weight=bold"
-    echo "${WALLET_BTC} BTC | color=#999999 size=11"
-    
-    LAST_WAS_WALLET=1
-    CURRENT_ACCOUNT=""
-    
-  elif [[ "$line" =~ ^ACCOUNT: ]]; then
-    # Parse account name and total: ACCOUNT:name|total_sats
-    ACCOUNT_LINE="${line#ACCOUNT:}"
-    IFS='|' read -r CURRENT_ACCOUNT ACCOUNT_TOTAL_SATS <<<"$ACCOUNT_LINE"
-    
-    # Display account as sub-level
-    ACCOUNT_BTC=$("$PYTHON3" -c "print('{:.8f}'.format($ACCOUNT_TOTAL_SATS/1e8))" 2>/dev/null)
-    echo "-- ${CURRENT_ACCOUNT} | color=#7AB8FF size=13"
-    echo "-- ${ACCOUNT_BTC} BTC | color=#AAAAAA size=10"
-    
-  elif [[ "$line" =~ ^ADDRESS: ]]; then
-    # Parse address: ADDRESS:addr|label|sats
-    ADDR_LINE="${line#ADDRESS:}"
-    IFS='|' read -r addr label sats <<<"$ADDR_LINE"
-    
+  if [[ "$line" =~ ^GROUP: ]]; then
+    # Output previous group subtotal at bottom
+    if [ -n "$CURRENT_GROUP" ] && [ "$GROUP_TOTAL" -gt 0 ]; then
+      echo "---"
+    fi
+
+    # Parse group name and total: GROUP:name|total_sats
+    GROUP_LINE="${line#GROUP:}"
+    IFS='|' read -r CURRENT_GROUP GROUP_TOTAL_SATS <<<"$GROUP_LINE"
+    GROUP_TOTAL=0
+
+    # Display group header: name on first line, total on second line (both at top level)
+    GROUP_HEADER_BTC=$("$PYTHON3" -c "print('{:.8f}'.format($GROUP_TOTAL_SATS/1e8))" 2>/dev/null)
+
+    # Always show group header (including Ungrouped)
+    echo "${CURRENT_GROUP} | color=#5DA3FA size=14"
+    echo "${GROUP_HEADER_BTC} BTC | color=#999999 size=11"
+  elif [[ "$line" =~ ^TOTAL: ]]; then
+    # Final group separator
+    if [ -n "$CURRENT_GROUP" ] && [ "$GROUP_TOTAL" -gt 0 ]; then
+      echo "---"
+    fi
+  else
+    IFS='|' read -r addr label sats <<<"$line"
     SHORT="$(echo "$addr" | awk '{print substr($0,1,8)"..."substr($0,length($0)-3,4)}')"
     DISPLAY="${label:-$SHORT}"
-    
-    # Determine indentation level (with or without account)
-    if [ -n "$CURRENT_ACCOUNT" ]; then
-      PREFIX="----"    # Wallet > Account > Address
-      SUB_PREFIX="------"
-    else
-      PREFIX="--"      # Wallet > Address (no account)
-      SUB_PREFIX="----"
-    fi
-    
+
     if [ "$sats" = "ERROR" ]; then
-      echo "${PREFIX} ${DISPLAY}    ⚠ fetch error | color=#ff6b6b"
+      echo "-- ${DISPLAY}    ⚠ fetch error | color=#ff6b6b"
     else
       BTC="$("$PYTHON3" -c "print('{:.8f}'.format($sats/1e8))" 2>/dev/null)"
-      echo "${PREFIX} ${DISPLAY}    ${BTC} BTC"
+      echo "-- ${DISPLAY}    ${BTC} BTC"
+      GROUP_TOTAL=$((GROUP_TOTAL + sats))
     fi
-    
-    # Address actions
-    echo "${SUB_PREFIX} 📋 ${addr} | font=Menlo size=13 bash=/usr/bin/pbcopy param1=${addr} terminal=false"
-    echo "${SUB_PREFIX} ✎ Edit Label | bash=$PLUGIN_PATH param1=--label param2=$addr terminal=false refresh=true"
-    echo "${SUB_PREFIX} 📁 Edit Group | bash=$PLUGIN_PATH param1=--group param2=$addr terminal=false refresh=true"
-    echo "${SUB_PREFIX} ✕ Remove      | bash=$PLUGIN_PATH param1=--remove param2=$addr terminal=false refresh=true"
-    
-  elif [[ "$line" =~ ^TOTAL: ]]; then
-    # End of data
-    :
+    echo "---- 📋 ${addr} | font=Menlo size=13 bash=/usr/bin/pbcopy param1=${addr} terminal=false"
+    echo "---- ✎ Edit Label | bash=$PLUGIN_PATH param1=--label param2=$addr terminal=false refresh=true"
+    echo "---- 📁 Edit Group | bash=$PLUGIN_PATH param1=--group param2=$addr terminal=false refresh=true"
+    echo "---- ✕ Remove      | bash=$PLUGIN_PATH param1=--remove param2=$addr terminal=false refresh=true"
   fi
 done <"$WORK/organized.txt"
 
