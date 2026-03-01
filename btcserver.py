@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-btc-server - Local HTTP server for viewing BTC balances on phone/browser
+btcserver - Local HTTP server for viewing BTC balances on phone/browser
 
 Runs on your Mac, accessible on your local network.
 Queries are made via Tor from the server -- your phone IP never touches mempool.
 Results are cached; background thread refreshes every REFRESH_MINUTES.
 
 Usage:
-  python btc-server.py              # starts on http://0.0.0.0:8765
-  python btc-server.py --port 9000
-  python btc-server.py --no-tor     # skip Tor (less private)
-  python btc-server.py --refresh 10 # refresh every 10 minutes (default: 5)
+  python btcserver.py              # starts on http://0.0.0.0:8765
+  python btcserver.py --port 9000
+  python btcserver.py --no-tor     # skip Tor (less private)
+  python btcserver.py --refresh 10 # refresh every 10 minutes (default: 5)
 
 Then open http://<your-mac-ip>:8765 on your phone (same WiFi).
 Find your Mac IP: System Settings > Wi-Fi > Details

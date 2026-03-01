@@ -1,32 +1,32 @@
 [
   {
     "address": "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa",
-    "label": "Cold storage",
-    "note": "Hardware wallet - Ledger"
+    "label": "Cold Storage",
+    "group": "Personal"
   },
   {
     "address": "12cbQLTFMXRnSzktFkuoG3eHoMeFtpTu3S",
-    "label": "Exchange deposit",
-    "note": "Binance"
+    "label": "Exchange",
+    "group": "Personal"
   },
   {
     "address": "bc1qw508d6qejxtdg4y5r3zarvary0c5xw7kv8f3t4",
-    "label": "",
-    "note": ""
+    "label": "Company Wallet",
+    "group": "Business"
   },
   {
     "address": "3J98t1WpEZ73CNmQviecrnyiWrnqRhWNLy",
-    "label": "Mining rewards",
-    "note": "Slush Pool payout"
+    "label": "Mining Rewards",
+    "group": "Income"
   },
   {
     "address": "1BoatSLRHtKNngkdXEeobR76b53LETtpyT",
-    "label": "Trading account",
-    "note": "OKX spot wallet"
+    "label": "Trading Account",
+    "group": "Business"
   },
   {
     "address": "bc1qar0srrr7xfkvy5l643lydnw9re59gtzzwf5mdq",
     "label": "Savings",
-    "note": "Long-term hold"
+    "group": "Long-term"
   }
 ]

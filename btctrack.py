@@ -1,16 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-btc-track - Track Bitcoin address balances privately via Tor
+btctrack - Track Bitcoin address balances privately via Tor
 
 Usage:
-  python btc-track.py add <address> [-l LABEL] [-n NOTE]  # Add address
-  python btc-track.py remove <address> [address2 ...]     # Remove addresses
-  python btc-track.py list                                 # List tracked addresses
-  python btc-track.py label <address> <label>             # Set/update label
-  python btc-track.py note <address> <note>               # Set/update note
-  python btc-track.py check                               # Check all balances
-  python btc-track.py check --no-tor                      # Skip Tor (less private)
+  python btctrack.py add <address> [-l LABEL] [-n NOTE]  # Add address
+  python btctrack.py remove <address> [address2 ...]     # Remove addresses
+  python btctrack.py list                                 # List tracked addresses
+  python btctrack.py label <address> <label>             # Set/update label
+  python btctrack.py note <address> <note>               # Set/update note
+  python btctrack.py check                               # Check all balances
+  python btctrack.py check --no-tor                      # Skip Tor (less private)
 
 addresses.json format:
   [
@@ -122,7 +122,7 @@ def cmd_note(args):
 def cmd_list(args):
     addresses = load_addresses()
     if not addresses:
-        print("No addresses tracked. Use: python btc-track.py add <address>")
+        print("No addresses tracked. Use: python btctrack.py add <address>")
         return
     for i, entry in enumerate(addresses, 1):
         label = "  [{}]".format(entry["label"]) if entry["label"] else ""
@@ -156,7 +156,7 @@ def fetch_balance(addr, proxies, base_url):
 def cmd_check(args):
     addresses = load_addresses()
     if not addresses:
-        print("No addresses tracked. Use: python btc-track.py add <address>")
+        print("No addresses tracked. Use: python btctrack.py add <address>")
         return
 
     use_tor = not args.no_tor
