@@ -1,6 +1,6 @@
 #!/bin/bash
 # <swiftbar.title>BTC Track</swiftbar.title>
-# <swiftbar.version>2.5.1</swiftbar.version>
+# <swiftbar.version>2.6</swiftbar.version>
 # <swiftbar.desc>Bitcoin address balance tracker via Tor. Privacy-focused with randomized queries.</swiftbar.desc>
 # <swiftbar.hideAbout>true</swiftbar.hideAbout>
 # <swiftbar.hideRunInTerminal>false</swiftbar.hideRunInTerminal>
@@ -182,18 +182,18 @@ if [ ! -f "$CONFIG" ]; then
   exit 0
 fi
 
-# ── Parse addresses from JSON ─────────────────────────────────────────────────
+# ── Parse addresses from JSON (preserve original order with index) ────────────
 cat >"$WORK/parse.py" <<'PYEOF'
 import json, sys
 data = json.load(open(sys.argv[1]))
-for entry in data:
+for idx, entry in enumerate(data):
     if isinstance(entry, dict):
         addr = entry.get("address", "")
         label = entry.get("label", "") or "---"
         group = entry.get("group", "") or "---"
-        print(addr + "\t" + label + "\t" + group)
+        print(str(idx) + "\t" + addr + "\t" + label + "\t" + group)
     elif isinstance(entry, str):
-        print(entry + "\t---\t---")
+        print(str(idx) + "\t" + entry + "\t---\t---")
 PYEOF
 
 "$PYTHON3" "$WORK/parse.py" "$CONFIG" >"$WORK/addrs.tsv" 2>/dev/null
@@ -223,7 +223,7 @@ PYEOF
 
 # ── Fetch balance for each address via Tor (fallback: clearnet) ───────────────
 # Privacy: random query order + random delays to prevent timing correlation
-while IFS=$'\t' read -r addr label group; do
+while IFS=$'\t' read -r idx addr label group; do
   [ -z "$addr" ] && continue
   # Convert placeholders back to empty strings
   [ "$label" = "---" ] && label=""
@@ -252,7 +252,7 @@ print(c['funded_txo_sum'] - c['spent_txo_sum'] + m['funded_txo_sum'] - m['spent_
     SATS="ERROR"
   fi
 
-  printf '%s|%s|%s|%s\n' "$addr" "$label" "$group" "$SATS" >>"$WORK/results.txt"
+  printf '%s|%s|%s|%s|%s\n' "$idx" "$addr" "$label" "$group" "$SATS" >>"$WORK/results.txt"
 done <"$WORK/addrs_shuffled.tsv"
 
 # ── Compute total BTC and organize by groups ─────────────────────────────────
@@ -265,10 +265,10 @@ total_all = 0
 
 for line in open(sys.argv[1]):
     parts = line.strip().split('|')
-    if len(parts) == 4:
-        addr, label, group, sats = parts
+    if len(parts) == 5:
+        idx, addr, label, group, sats = parts
         group_name = group if group else "Ungrouped"
-        groups[group_name].append((addr, label, sats))
+        groups[group_name].append((int(idx), addr, label, sats))
         try:
             total_all += int(sats)
         except ValueError:
@@ -276,9 +276,12 @@ for line in open(sys.argv[1]):
 
 # Output: groups sorted, with Ungrouped last
 for grp in sorted(groups.keys(), key=lambda x: (x == "Ungrouped", x)):
+    # Sort addresses by original index within each group
+    groups[grp].sort(key=lambda x: x[0])
+    
     # Calculate group total
     group_total = 0
-    for addr, label, sats in groups[grp]:
+    for idx, addr, label, sats in groups[grp]:
         try:
             group_total += int(sats)
         except ValueError:
@@ -286,7 +289,7 @@ for grp in sorted(groups.keys(), key=lambda x: (x == "Ungrouped", x)):
     
     # Output: GROUP:name|total_sats
     print("GROUP:" + grp + "|" + str(group_total))
-    for addr, label, sats in groups[grp]:
+    for idx, addr, label, sats in groups[grp]:
         print(addr + "|" + label + "|" + sats)
 
 print("TOTAL:" + str(total_all))

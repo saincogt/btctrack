@@ -127,6 +127,8 @@ Open `http://<your-mac-ip>:8765` on your phone.
 - `group` (optional): Organizes addresses into sections (e.g. `"Personal"`, `"Business"`, `"Income"`)
 - `note` field is **not supported** by the SwiftBar plugin (CLI only)
 
+**Display order**: Addresses are shown in the same order as they appear in the JSON file. To reorder, edit the JSON file and move entries up or down.
+
 ---
 
 ## Privacy

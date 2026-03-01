@@ -1,5 +1,16 @@
 # Changelog
 
+## v2.6 (2026-03-01)
+
+### ✨ Improved
+- **Consistent display order**: Addresses now display in JSON file order within each group
+  - Query order is still randomized for privacy protection
+  - Display order is restored to match JSON file sequence
+  - Users can reorder addresses by editing the JSON file manually
+  - Each refresh now shows predictable, consistent ordering
+
+---
+
 ## v2.5.1 (2026-03-01)
 
 ### 🔧 Fixed
