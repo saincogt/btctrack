@@ -60,13 +60,17 @@ Displays a ₿ icon in the menu bar. Balance is intentionally hidden for privacy
 
 The plugin stores its config in `plugins/.btcaddresses.json` (hidden file, so SwiftBar does not treat it as a plugin). Use **✎ Edit Config** in the menu to open it in TextEdit, VS Code, Cursor, or Finder.
 
-**Rename the file to change the refresh interval:**
+**Change the refresh interval by renaming the file:**
 
 | Filename | Refresh |
 |---|---|
 | `btctrack.5m.sh` | every 5 minutes |
 | `btctrack.30m.sh` | every 30 minutes |
 | `btctrack.1h.sh` | every hour (default) |
+| `btctrack.6h.sh` | every 6 hours |
+| `btctrack.12h.sh` | every 12 hours |
+
+For example: `mv btctrack.1h.sh btctrack.30m.sh` changes refresh to 30 minutes.
 
 **Per-address menu actions:** 📋 Copy address · ✎ Edit label · 📁 Edit group · ✕ Remove
 
@@ -102,6 +106,10 @@ Open `http://<your-mac-ip>:8765` on your phone.
 ]
 ```
 
+- `address` (required): Bitcoin address
+- `label` (optional): Display name
+- `note` (optional): Private memo (not used by SwiftBar plugin)
+
 ### SwiftBar plugin — `plugins/.btcaddresses.json`
 
 ```json
@@ -114,7 +122,10 @@ Open `http://<your-mac-ip>:8765` on your phone.
 ]
 ```
 
-`group` organizes addresses into sections in the dropdown. Any string is valid (e.g. `"Personal"`, `"Business"`, `"Income"`).
+- `address` (required): Bitcoin address
+- `label` (optional): Display name (if empty, shows truncated address)
+- `group` (optional): Organizes addresses into sections (e.g. `"Personal"`, `"Business"`, `"Income"`)
+- `note` field is **not supported** by the SwiftBar plugin (CLI only)
 
 ---
 

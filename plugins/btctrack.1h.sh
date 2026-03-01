@@ -1,6 +1,6 @@
-#!/opt/homebrew/bin/bash
+#!/bin/bash
 # <swiftbar.title>BTC Track</swiftbar.title>
-# <swiftbar.version>2.3</swiftbar.version>
+# <swiftbar.version>2.4</swiftbar.version>
 # <swiftbar.desc>Bitcoin address balance tracker via Tor. Privacy-focused with randomized queries.</swiftbar.desc>
 # <swiftbar.hideAbout>true</swiftbar.hideAbout>
 # <swiftbar.hideRunInTerminal>false</swiftbar.hideRunInTerminal>
@@ -27,8 +27,9 @@ TOR_PROXY="socks5h://127.0.0.1:9050"
 ONION_API="http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/api/address"
 CLEAR_API="https://mempool.space/api/address"
 
-PYTHON3="/opt/homebrew/bin/python3"
-[ -x "$PYTHON3" ] || PYTHON3="/usr/bin/python3"
+PYTHON3="/opt/homebrew/bin/python3"  # Apple Silicon
+[ -x "$PYTHON3" ] || PYTHON3="/usr/local/bin/python3"  # Intel Mac
+[ -x "$PYTHON3" ] || PYTHON3="/usr/bin/python3"  # System fallback
 
 # Workspace — created early so action handlers can use it too
 WORK="$(mktemp -d)"
@@ -196,10 +197,12 @@ PYEOF
 "$PYTHON3" "$WORK/parse.py" "$CONFIG" >"$WORK/addrs.tsv" 2>/dev/null
 
 if [ ! -s "$WORK/addrs.tsv" ]; then
-  echo "BTC ?"
+  echo "| sfimage=bitcoinsign.circle color=#f7931a"
   echo "---"
-  echo "No addresses in btcaddresses.json | color=#ff6b6b"
+  echo "Config file error or empty | color=#ff6b6b"
   echo "＋ Add Address | bash=$PLUGIN_PATH param1=--add terminal=false refresh=true"
+  echo "✎ Edit Config"
+  echo "-- TextEdit | bash=/usr/bin/open param1=-e param2=$CONFIG terminal=false"
   exit 0
 fi
 
@@ -319,8 +322,8 @@ while IFS= read -r line; do
     GROUP_HEADER_BTC=$("$PYTHON3" -c "print('{:.8f}'.format($GROUP_TOTAL_SATS/1e8))" 2>/dev/null)
 
     # Always show group header (including Ungrouped)
-    echo "${CURRENT_GROUP} | color=#4A90E2 size=14"
-    echo "${GROUP_HEADER_BTC} BTC | color=#888888 size=11"
+    echo "${CURRENT_GROUP} | color=#5DA3FA size=14"
+    echo "${GROUP_HEADER_BTC} BTC | color=#999999 size=11"
   elif [[ "$line" =~ ^TOTAL: ]]; then
     # Final group separator
     if [ -n "$CURRENT_GROUP" ] && [ "$GROUP_TOTAL" -gt 0 ]; then
@@ -332,7 +335,7 @@ while IFS= read -r line; do
     DISPLAY="${label:-$SHORT}"
 
     if [ "$sats" = "ERROR" ]; then
-      echo "-- ${DISPLAY}    fetch error | color=#ff6b6b"
+      echo "-- ${DISPLAY}    ⚠ fetch error | color=#ff6b6b"
     else
       BTC="$("$PYTHON3" -c "print('{:.8f}'.format($sats/1e8))" 2>/dev/null)"
       echo "-- ${DISPLAY}    ${BTC} BTC"
@@ -356,8 +359,28 @@ echo "-- Cursor            | bash=/usr/bin/open param1=-a param2=Cursor param3=$
 echo "-- Reveal in Finder  | bash=/usr/bin/open param1=-R param2=$CONFIG terminal=false"
 echo "---"
 if [ "$HAS_ERROR" -gt 0 ]; then
-  echo "Tor may not be running | color=#ff6b6b size=11"
-  echo "Start Tor | bash=/opt/homebrew/bin/brew param1=services param2=start param3=tor terminal=false refresh=true"
+  # Check if Tor is installed
+  if ! command -v tor >/dev/null 2>&1; then
+    echo "⚠ Tor not installed | color=#ff6b6b size=11"
+    echo "-- Install: brew install tor | terminal=false"
+    echo "-- Guide | href=https://formulae.brew.sh/formula/tor"
+  else
+    # Tor installed but may not be running
+    if ! pgrep -x tor >/dev/null 2>&1; then
+      echo "⚠ Tor not running | color=#ff6b6b size=11"
+      # Detect Homebrew location
+      BREW="/opt/homebrew/bin/brew"
+      [ -x "$BREW" ] || BREW="/usr/local/bin/brew"
+      if [ -x "$BREW" ]; then
+        echo "Start Tor | bash=$BREW param1=services param2=start param3=tor terminal=false refresh=true"
+      else
+        echo "Start Tor: brew services start tor | terminal=false"
+      fi
+    else
+      echo "⚠ Network error | color=#ff6b6b size=11"
+      echo "-- Check Tor proxy: 127.0.0.1:9050 | terminal=false"
+    fi
+  fi
 fi
 echo "Last updated: $(date '+%H:%M') | color=#666666 size=11"
 echo "Refresh | refresh=true"

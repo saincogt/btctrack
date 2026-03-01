@@ -39,16 +39,24 @@ All addresses, labels, and groups are stored in a local JSON file. It is gitigno
 ## Residual risks
 
 ### Long-term pattern analysis
-If you track a large number of addresses (50+), a server may — over months — statistically identify that "this set of addresses is always queried together", even with randomization.
+If you track a large number of addresses (50+), a server may — over months — statistically identify that "this set of addresses is often queried together", even with randomization.
 
-**Mitigation:** split addresses across multiple tracking instances, or increase the refresh interval.
+**Risk assessment:** Requires the server to log and analyze patterns over extended periods. Most servers do not perform this level of analysis on .onion endpoints.
+
+**Mitigation:** 
+- Split addresses across multiple tracking instances (separate config files)
+- Use different refresh intervals for different groups
+- Increase refresh interval to 6-12 hours to reduce total query volume
 
 ### Single Tor circuit
-All queries within one refresh cycle may share the same Tor circuit. The server cannot see your IP, but it can observe that requests arrive on the same circuit.
+All queries within one refresh cycle typically share the same Tor circuit. The server cannot see your IP, but it can observe that multiple requests arrive via the same Tor exit node within a short time window.
 
-**Advanced mitigation (optional):**
-- Send a `NEWNYM` signal to Tor after each query to force circuit rotation
+**Risk assessment:** This is acceptable for most users. The random ordering and delays make it difficult to correlate addresses even when they share a circuit. Circuit rotation happens naturally as Tor manages connections.
+
+**Advanced mitigation (optional, for high-threat models):**
+- Send a `NEWNYM` signal to Tor after each query to force circuit rotation (significantly slower)
 - Use multiple Tor instances on different SOCKS ports
+- Increase refresh interval to 6-12 hours to reduce query frequency
 
 ### On-chain privacy
 btctrack does **not** protect on-chain privacy. If your addresses are linked by transactions (shared inputs, change outputs), blockchain analytics firms can still cluster them regardless of how you query.
