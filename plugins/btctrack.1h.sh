@@ -1,6 +1,6 @@
 #!/bin/bash
 # <swiftbar.title>BTC Track</swiftbar.title>
-# <swiftbar.version>2.4</swiftbar.version>
+# <swiftbar.version>2.5</swiftbar.version>
 # <swiftbar.desc>Bitcoin address balance tracker via Tor. Privacy-focused with randomized queries.</swiftbar.desc>
 # <swiftbar.hideAbout>true</swiftbar.hideAbout>
 # <swiftbar.hideRunInTerminal>false</swiftbar.hideRunInTerminal>
@@ -42,40 +42,34 @@ trap 'rm -rf "$WORK"' EXIT
 # ── Action handlers (invoked by menu buttons) ─────────────────────────────────
 
 if [ "$1" = "--add" ]; then
-  # Write AppleScript dialogs to temp files (avoids heredoc-in-subshell)
-  cat >"$WORK/dlg_addr.scpt" <<'APEOF'
+  # Single dialog with multiple fields
+  cat >"$WORK/dlg_add.scpt" <<'APEOF'
 try
-  set d to display dialog "Enter Bitcoin address:" default answer "" with title "BTC Track - Add Address" buttons {"Cancel", "Next"} default button "Next"
+  set dialogText to "Enter one item per line:" & return & return & "1. Address (required)" & return & "2. Label (optional - e.g. Cold Storage)" & return & "3. Group (optional - e.g. Personal, Business)"
+  set d to display dialog dialogText default answer "" with title "BTC Track - Add Address" buttons {"Cancel", "Add"} default button "Add"
   return text returned of d
 on error
   return ""
 end try
 APEOF
 
-  ADDR=$(osascript "$WORK/dlg_addr.scpt" 2>/dev/null)
+  INPUT=$(osascript "$WORK/dlg_add.scpt" 2>/dev/null)
+  [ -z "$INPUT" ] && exit 0
+
+  # Parse multi-line input
+  cat >"$WORK/parse_input.py" <<'PYEOF'
+import sys
+lines = sys.argv[1].strip().split('\n')
+addr = lines[0].strip() if len(lines) > 0 else ""
+label = lines[1].strip() if len(lines) > 1 else ""
+group = lines[2].strip() if len(lines) > 2 else ""
+print(addr + "\t" + label + "\t" + group)
+PYEOF
+
+  PARSED=$("$PYTHON3" "$WORK/parse_input.py" "$INPUT")
+  IFS=$'\t' read -r ADDR LABEL GROUP <<<"$PARSED"
+
   [ -z "$ADDR" ] && exit 0
-
-  cat >"$WORK/dlg_label.scpt" <<'APEOF'
-try
-  set d to display dialog "Label (optional - e.g. Cold Storage):" default answer "" with title "BTC Track - Add Address" buttons {"Cancel", "Next"} default button "Next"
-  return text returned of d
-on error
-  return ""
-end try
-APEOF
-
-  LABEL=$(osascript "$WORK/dlg_label.scpt" 2>/dev/null)
-
-  cat >"$WORK/dlg_group.scpt" <<'APEOF'
-try
-  set d to display dialog "Group (optional - e.g. Personal, Business):" default answer "" with title "BTC Track - Add Address" buttons {"Skip", "Add"} default button "Add"
-  return text returned of d
-on error
-  return ""
-end try
-APEOF
-
-  GROUP=$(osascript "$WORK/dlg_group.scpt" 2>/dev/null)
 
   cat >"$WORK/add.py" <<'PYEOF'
 import json, sys

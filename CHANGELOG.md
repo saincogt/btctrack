@@ -1,5 +1,15 @@
 # Changelog
 
+## v2.5 (2026-03-01)
+
+### ✨ Improved
+- **Single-dialog address input**: Adding a new address now uses one dialog instead of three
+  - Enter address, label, and group on separate lines in the same window
+  - Format: Line 1 = Address (required), Line 2 = Label (optional), Line 3 = Group (optional)
+  - Much faster workflow - no more clicking through multiple dialogs
+
+---
+
 ## v2.4 (2026-03-01)
 
 ### 🔧 Fixed
