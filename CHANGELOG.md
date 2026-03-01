@@ -1,12 +1,19 @@
 # Changelog
 
-## v2.5 (2026-03-01)
+## v2.5.1 (2026-03-01)
 
-### ✨ Improved
-- **Single-dialog address input**: Adding a new address now uses one dialog instead of three
-  - Enter address, label, and group on separate lines in the same window
-  - Format: Line 1 = Address (required), Line 2 = Label (optional), Line 3 = Group (optional)
-  - Much faster workflow - no more clicking through multiple dialogs
+### 🔧 Fixed
+- **Address input dialogs**: Reverted to 3-step dialog flow (macOS limitation)
+  - macOS `display dialog` doesn't support multi-line input - pressing Enter submits the form
+  - Improved 3-step flow with progress indicators: "Add Address (1/3)", "(2/3)", "(3/3)"
+  - Better button labels: "Next ➜" and "Done ✓" for clearer navigation
+  - Each step shows only one field for simpler, faster input
+
+---
+
+## v2.5 (2026-03-01) - REVERTED
+
+~~Attempted single-dialog input - didn't work due to macOS dialog limitations~~
 
 ---
 
