@@ -123,31 +123,47 @@ Open `http://<your-mac-ip>:8765` on your phone.
 ]
 ```
 
-- `address` (required): Bitcoin address
-- `label` (optional): Display name (if empty, shows truncated address)
-- `group` (optional): Organizes addresses into 3-level hierarchy
-  - Format: `"Wallet/Account"` for 3 levels (e.g. `"Trezor/HODL"`)
-  - Format: `"Wallet"` for 2 levels (e.g. `"Personal"`)
-  - Empty = "Ungrouped" category
-- `order` (optional): Controls display order (lower number = appears first, default=9999)
-- `note` field is **not supported** by the SwiftBar plugin (CLI only)
+#### Field Reference
 
-**v2.5+ Hierarchy Example:**
+| Field | Required | Description |
+|-------|----------|-------------|
+| `address` | ✅ Yes | Bitcoin address |
+| `label` | ❌ No | Display name (if empty, shows truncated address) |
+| `group` | ❌ No | Hierarchy: `"Wallet/Account"` or `"Wallet"` |
+| `order` | ❌ No | Display priority (lower = first, default 9999) |
+
+**Note:** The `note` field is **not supported** by SwiftBar plugin (CLI only).
+
+#### v2.7+ Hierarchy
+
+**3-level format:** `"group": "Trezor/HODL"`  
+**2-level format:** `"group": "Personal"`
+
+**Display example:**
 ```
-Trezor (Wallet, order=1)
-  └─ Personal (Account)
-      └─ bc1q... (Address)
-  └─ HODL (Account)
-      └─ bc1q... (Address)
-      
-Cold Wallet (Wallet, order=2)
-  └─ Income (Account)
-      └─ bc1q... (Address)
+Trezor (order=1)
+  3.50000000 BTC
+  
+  Personal
+    0.80000000 BTC
+    └─ Cold Storage
+    
+  HODL
+    2.70000000 BTC
+    └─ Long-term
+
+---
+
+Cold Wallet (order=2)
+  └─ Income
+      └─ Mining rewards
 ```
 
-See [MIGRATION_v2.7.md](MIGRATION_v2.7.md) for upgrade guide from v2.4.
+**Quick migration from v2.6:**
+- `"Trezor HODL"` → `"Trezor/HODL"` (change space to `/`)
+- Add `"order": 1` for priority sorting (optional)
 
-**Display order**: Addresses are shown in the same order as they appear in the JSON file. To reorder, edit the JSON file and move entries up or down.
+See [MIGRATION_v2.7.md](MIGRATION_v2.7.md) for detailed upgrade guide.
 
 ---
 
