@@ -177,6 +177,25 @@ PYEOF
   exit 0
 fi
 
+if [ "$1" = "--toggle-watch" ]; then
+  cat >"$WORK/toggle.py" <<'PYEOF'
+import json, sys
+config_file, addr = sys.argv[1], sys.argv[2]
+data = json.load(open(config_file))
+for i, e in enumerate(data):
+    a = e.get("address") if isinstance(e, dict) else e
+    if a == addr:
+        if isinstance(e, dict):
+            data[i]["watch_only"] = not data[i].get("watch_only", False)
+        else:
+            data[i] = {"address": addr, "watch_only": True}
+with open(config_file, "w") as f:
+    json.dump(data, f, indent=2)
+PYEOF
+  "$PYTHON3" "$WORK/toggle.py" "$CONFIG" "$2"
+  exit 0
+fi
+
 # ── No addresses yet ──────────────────────────────────────────────────────────
 if [ ! -f "$CONFIG" ]; then
   echo "| sfimage=bitcoinsign.circle color=#f7931a"
@@ -198,9 +217,10 @@ for idx, entry in enumerate(data):
         label = entry.get("label", "") or "---"
         group = entry.get("group", "") or "---"
         order = entry.get("order", 9999)  # Default high value = low priority
-        print(str(idx) + "\t" + addr + "\t" + label + "\t" + group + "\t" + str(order))
+        watch_only = 1 if entry.get("watch_only", False) else 0
+        print(str(idx) + "\t" + addr + "\t" + label + "\t" + group + "\t" + str(order) + "\t" + str(watch_only))
     elif isinstance(entry, str):
-        print(str(idx) + "\t" + entry + "\t---\t---\t9999")
+        print(str(idx) + "\t" + entry + "\t---\t---\t9999\t0")
 PYEOF
 
 "$PYTHON3" "$WORK/parse.py" "$CONFIG" >"$WORK/addrs.tsv" 2>/dev/null
@@ -230,7 +250,7 @@ PYEOF
 
 # ── Fetch balance for each address via Tor (fallback: clearnet) ───────────────
 # Privacy: random query order + random delays to prevent timing correlation
-while IFS=$'\t' read -r idx addr label group order; do
+while IFS=$'\t' read -r idx addr label group order watch_only; do
   [ -z "$addr" ] && continue
   # Convert placeholders back to empty strings
   [ "$label" = "---" ] && label=""
@@ -259,7 +279,7 @@ print(c['funded_txo_sum'] - c['spent_txo_sum'] + m['funded_txo_sum'] - m['spent_
     SATS="ERROR"
   fi
 
-  printf '%s|%s|%s|%s|%s|%s\n' "$idx" "$addr" "$label" "$group" "$order" "$SATS" >>"$WORK/results.txt"
+  printf '%s|%s|%s|%s|%s|%s|%s\n' "$idx" "$addr" "$label" "$group" "$order" "$SATS" "${watch_only:-0}" >>"$WORK/results.txt"
 done <"$WORK/addrs_shuffled.tsv"
 
 # ── Compute total BTC and organize by 3-level hierarchy ──────────────────────
@@ -267,55 +287,64 @@ cat >"$WORK/organize.py" <<'PYEOF'
 import sys
 from collections import defaultdict
 
-# Structure: wallets -> accounts -> addresses
+# Structure: wallets -> accounts -> addresses (owned only)
 wallets = defaultdict(lambda: defaultdict(list))
-wallet_order = {}  # Track min order per wallet
-account_order = {}  # Track min order per account
-total_all = 0
+wallet_order = {}
+account_order = {}
+total_owned = 0
+total_watch = 0
+watch_addresses = []
 
 for line in open(sys.argv[1]):
     parts = line.strip().split('|')
-    if len(parts) == 6:
-        idx, addr, label, group, order, sats = parts
-        
+    if len(parts) >= 6:
+        idx, addr, label, group, order, sats = parts[0], parts[1], parts[2], parts[3], parts[4], parts[5]
+        watch_only = parts[6] if len(parts) > 6 else "0"
+
+        order_val = int(order) if order.lstrip('-').isdigit() else 9999
+
+        if watch_only == "1":
+            watch_addresses.append((int(idx), addr, label, group, order_val, sats))
+            try:
+                total_watch += int(sats)
+            except ValueError:
+                pass
+            continue
+
         # Parse group: "Wallet/Account" or just "Wallet"
         if '/' in group:
             wallet, account = group.split('/', 1)
         else:
             wallet = group if group else "Ungrouped"
             account = ""
-        
-        # Track minimum order for sorting
-        order_val = int(order)
+
         wallet_key = wallet
         account_key = (wallet, account)
-        
+
         if wallet_key not in wallet_order:
             wallet_order[wallet_key] = order_val
         else:
             wallet_order[wallet_key] = min(wallet_order[wallet_key], order_val)
-        
+
         if account_key not in account_order:
             account_order[account_key] = order_val
         else:
             account_order[account_key] = min(account_order[account_key], order_val)
-        
-        # Store: (original_idx, addr, label, order, sats)
+
         wallets[wallet][account].append((int(idx), addr, label, order_val, sats))
-        
+
         try:
-            total_all += int(sats)
+            total_owned += int(sats)
         except ValueError:
             pass
 
 # Sort wallets by order, then alphabetically (Ungrouped last)
-sorted_wallets = sorted(wallets.keys(), 
+sorted_wallets = sorted(wallets.keys(),
                        key=lambda w: (w == "Ungrouped", wallet_order.get(w, 9999), w))
 
 for wallet in sorted_wallets:
     accounts = wallets[wallet]
-    
-    # Calculate wallet total
+
     wallet_total = 0
     for account in accounts:
         for idx, addr, label, order, sats in accounts[account]:
@@ -323,41 +352,95 @@ for wallet in sorted_wallets:
                 wallet_total += int(sats)
             except ValueError:
                 pass
-    
-    # Output wallet header
+
     print("WALLET:" + wallet + "|" + str(wallet_total))
-    
-    # Sort accounts by order, then alphabetically (empty account = default, goes first)
+
     sorted_accounts = sorted(accounts.keys(),
                            key=lambda a: (a != "", account_order.get((wallet, a), 9999), a))
-    
+
     for account in sorted_accounts:
-        # Sort addresses by original index to maintain user's order
         addresses = sorted(accounts[account], key=lambda x: x[0])
-        
-        # Calculate account total
+
         account_total = 0
         for idx, addr, label, order, sats in addresses:
             try:
                 account_total += int(sats)
             except ValueError:
                 pass
-        
-        # Output account header (if not empty)
+
         if account:
             print("ACCOUNT:" + account + "|" + str(account_total))
-        
-        # Output addresses
+
         for idx, addr, label, order, sats in addresses:
             print("ADDRESS:" + addr + "|" + label + "|" + sats)
 
-print("TOTAL:" + str(total_all))
+print("TOTAL:" + str(total_owned))
+
+if watch_addresses:
+    watch_wallets = defaultdict(lambda: defaultdict(list))
+    watch_wallet_order = {}
+    watch_account_order = {}
+
+    for idx, addr, label, wgroup, order, sats in watch_addresses:
+        if '/' in wgroup:
+            ww, wa = wgroup.split('/', 1)
+        else:
+            ww = wgroup if wgroup else "Ungrouped"
+            wa = ""
+        if ww not in watch_wallet_order:
+            watch_wallet_order[ww] = order
+        else:
+            watch_wallet_order[ww] = min(watch_wallet_order[ww], order)
+        wak = (ww, wa)
+        if wak not in watch_account_order:
+            watch_account_order[wak] = order
+        else:
+            watch_account_order[wak] = min(watch_account_order[wak], order)
+        watch_wallets[ww][wa].append((idx, addr, label, order, sats))
+
+    print("WATCH_SECTION")
+
+    sorted_ww = sorted(watch_wallets.keys(),
+                       key=lambda w: (w == "Ungrouped", watch_wallet_order.get(w, 9999), w))
+
+    for ww in sorted_ww:
+        waccs = watch_wallets[ww]
+        ww_total = sum(
+            int(sats) for wa in waccs for _, _, _, _, sats in waccs[wa]
+            if sats not in ("ERROR", "")
+            for sats in [sats] if sats.lstrip('-').isdigit()
+        )
+        print("WATCH_WALLET:" + ww + "|" + str(ww_total))
+
+        sorted_wa = sorted(waccs.keys(),
+                           key=lambda a: (a != "", watch_account_order.get((ww, a), 9999), a))
+
+        for wa in sorted_wa:
+            waddrs = sorted(waccs[wa], key=lambda x: x[0])
+            wa_total = 0
+            for _, _, _, _, sats in waddrs:
+                try:
+                    wa_total += int(sats)
+                except ValueError:
+                    pass
+            if wa:
+                print("WATCH_ACCOUNT:" + wa + "|" + str(wa_total))
+            for _, addr, label, _, sats in waddrs:
+                print("WATCH_ADDRESS:" + addr + "|" + label + "|" + sats)
+
+    print("TOTAL_WATCH:" + str(total_watch))
 PYEOF
 
 "$PYTHON3" "$WORK/organize.py" "$WORK/results.txt" >"$WORK/organized.txt"
 
 TOTAL_BTC=$(grep '^TOTAL:' "$WORK/organized.txt" | cut -d: -f2)
 TOTAL_BTC=$("$PYTHON3" -c "print('{:.8f}'.format($TOTAL_BTC/1e8))" 2>/dev/null)
+
+TOTAL_WATCH_SATS=$(grep '^TOTAL_WATCH:' "$WORK/organized.txt" | cut -d: -f2)
+if [ -n "$TOTAL_WATCH_SATS" ]; then
+  TOTAL_WATCH_BTC=$("$PYTHON3" -c "print('{:.8f}'.format($TOTAL_WATCH_SATS/1e8))" 2>/dev/null)
+fi
+HAS_WATCH=$(grep -c '^WATCH_ADDRESS:' "$WORK/organized.txt" 2>/dev/null || echo 0)
 
 HAS_ERROR="$(grep -c '|ERROR$' "$WORK/results.txt" 2>/dev/null)"
 HAS_ERROR="${HAS_ERROR:-0}"
@@ -425,16 +508,78 @@ while IFS= read -r line; do
     echo "${SUB_PREFIX} 📋 ${addr} | font=Menlo size=13 bash=/usr/bin/pbcopy param1=${addr} terminal=false"
     echo "${SUB_PREFIX} ✎ Edit Label | bash=$PLUGIN_PATH param1=--label param2=$addr terminal=false refresh=true"
     echo "${SUB_PREFIX} 📁 Edit Group | bash=$PLUGIN_PATH param1=--group param2=$addr terminal=false refresh=true"
+    echo "${SUB_PREFIX} Mark as Watch-Only | bash=$PLUGIN_PATH param1=--toggle-watch param2=$addr terminal=false refresh=true"
     echo "${SUB_PREFIX} ✕ Remove      | bash=$PLUGIN_PATH param1=--remove param2=$addr terminal=false refresh=true"
-    
+
   elif [[ "$line" =~ ^TOTAL: ]]; then
-    # End of data
+    # End of owned data
+    :
+
+  elif [[ "$line" =~ ^WATCH_SECTION ]]; then
+    echo "---"
+    echo "Watching | color=#888888 size=15 weight=bold"
+    CURRENT_WATCH_WALLET=""
+    CURRENT_WATCH_ACCOUNT=""
+    LAST_WAS_WATCH_WALLET=""
+
+  elif [[ "$line" =~ ^WATCH_WALLET: ]]; then
+    WATCH_WALLET_LINE="${line#WATCH_WALLET:}"
+    IFS='|' read -r CURRENT_WATCH_WALLET WATCH_WALLET_SATS <<<"$WATCH_WALLET_LINE"
+    CURRENT_WATCH_ACCOUNT=""
+    # Skip header for Ungrouped (flat display)
+    if [ "$CURRENT_WATCH_WALLET" != "Ungrouped" ]; then
+      [ -n "$LAST_WAS_WATCH_WALLET" ] && echo "---"
+      WATCH_WALLET_BTC=$("$PYTHON3" -c "print('{:.8f}'.format($WATCH_WALLET_SATS/1e8))" 2>/dev/null)
+      echo "${CURRENT_WATCH_WALLET} | color=#888888 size=15 weight=bold"
+      echo "${WATCH_WALLET_BTC} BTC | color=#777777 size=11"
+    fi
+    LAST_WAS_WATCH_WALLET=1
+
+  elif [[ "$line" =~ ^WATCH_ACCOUNT: ]]; then
+    WATCH_ACCOUNT_LINE="${line#WATCH_ACCOUNT:}"
+    IFS='|' read -r CURRENT_WATCH_ACCOUNT WATCH_ACCOUNT_SATS <<<"$WATCH_ACCOUNT_LINE"
+    WATCH_ACCOUNT_BTC=$("$PYTHON3" -c "print('{:.8f}'.format($WATCH_ACCOUNT_SATS/1e8))" 2>/dev/null)
+    echo "-- ${CURRENT_WATCH_ACCOUNT} | color=#888888 size=13"
+    echo "-- ${WATCH_ACCOUNT_BTC} BTC | color=#777777 size=10"
+
+  elif [[ "$line" =~ ^WATCH_ADDRESS: ]]; then
+    ADDR_LINE="${line#WATCH_ADDRESS:}"
+    IFS='|' read -r addr label sats <<<"$ADDR_LINE"
+
+    SHORT="$(echo "$addr" | awk '{print substr($0,1,8)"..."substr($0,length($0)-3,4)}')"
+    DISPLAY="${label:-$SHORT}"
+
+    if [ -n "$CURRENT_WATCH_ACCOUNT" ]; then
+      WATCH_PREFIX="----"
+      WATCH_SUB="------"
+    else
+      WATCH_PREFIX="--"
+      WATCH_SUB="----"
+    fi
+
+    if [ "$sats" = "ERROR" ]; then
+      echo "${WATCH_PREFIX} [W] ${DISPLAY}    ⚠ fetch error | color=#ff6b6b"
+    else
+      BTC="$("$PYTHON3" -c "print('{:.8f}'.format($sats/1e8))" 2>/dev/null)"
+      echo "${WATCH_PREFIX} [W] ${DISPLAY}    ${BTC} BTC | color=#888888"
+    fi
+
+    echo "${WATCH_SUB} 📋 ${addr} | font=Menlo size=13 bash=/usr/bin/pbcopy param1=${addr} terminal=false"
+    echo "${WATCH_SUB} ✎ Edit Label | bash=$PLUGIN_PATH param1=--label param2=$addr terminal=false refresh=true"
+    echo "${WATCH_SUB} 📁 Edit Group | bash=$PLUGIN_PATH param1=--group param2=$addr terminal=false refresh=true"
+    echo "${WATCH_SUB} Remove from Watching | bash=$PLUGIN_PATH param1=--toggle-watch param2=$addr terminal=false refresh=true"
+    echo "${WATCH_SUB} ✕ Remove | bash=$PLUGIN_PATH param1=--remove param2=$addr terminal=false refresh=true"
+
+  elif [[ "$line" =~ ^TOTAL_WATCH: ]]; then
     :
   fi
 done <"$WORK/organized.txt"
 
 echo "---"
 echo "Total: ${TOTAL_BTC:-?} BTC | color=#f7931a"
+if [ "${HAS_WATCH:-0}" -gt 0 ]; then
+  echo "Watching: ${TOTAL_WATCH_BTC:-?} BTC | color=#888888 size=12"
+fi
 echo "---"
 echo "＋ Add Address | bash=$PLUGIN_PATH param1=--add terminal=false refresh=true"
 echo "✎ Edit Config"
