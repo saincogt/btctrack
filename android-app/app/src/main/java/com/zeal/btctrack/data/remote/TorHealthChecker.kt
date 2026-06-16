@@ -13,7 +13,8 @@ class TorHealthChecker(
     appSettings: AppSettings,
     httpClient: OkHttpClient? = null,
 ) {
-    private val proxyConfig = TorProxyConfig.from(appSettings).also { it.validate() }
+    private val proxyConfig: TorProxyConfig? = if (appSettings.socksHost.isBlank()) null
+        else TorProxyConfig.from(appSettings).also { it.validate() }
     private val api = MempoolOnionApi(baseUrl)
     private val client = httpClient ?: OkHttpClient.Builder()
         .apply { TorSocksProxyFactory.from(appSettings)?.let { proxy(it) } }
@@ -23,14 +24,15 @@ class TorHealthChecker(
 
     suspend fun check(): TorHealthStatus = withContext(Dispatchers.IO) {
         val request = api.tipHeightRequest()
-        Log.d("BtcTrack", "TorHealthChecker: connecting to ${request.url} via ${proxyConfig.host}:${proxyConfig.port}")
+        Log.d("BtcTrack", "TorHealthChecker: connecting to ${request.url} via ${proxyConfig?.let { "${it.host}:${it.port}" } ?: "VPN"}")
         try {
             client.newCall(request).execute().use { response ->
+                val via = proxyConfig?.let { " via ${it.host}:${it.port}" } ?: " (VPN mode)"
                 if (!response.isSuccessful) {
                     return@withContext TorHealthStatus(
                         ok = false,
                         endpointHost = api.host,
-                        message = "HTTP ${response.code} via ${proxyConfig.host}:${proxyConfig.port}",
+                        message = "HTTP ${response.code}$via",
                     )
                 }
                 val body = response.body?.string().orEmpty().trim()
@@ -39,7 +41,7 @@ class TorHealthChecker(
                     TorHealthStatus(
                         ok = false,
                         endpointHost = api.host,
-                        message = "Unexpected tip height response via ${proxyConfig.host}:${proxyConfig.port}",
+                        message = "Unexpected tip height response$via",
                     )
                 } else {
                     TorHealthStatus(
