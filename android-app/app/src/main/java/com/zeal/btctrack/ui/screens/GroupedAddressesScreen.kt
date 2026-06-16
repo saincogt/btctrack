@@ -103,7 +103,7 @@ fun GroupedAddressesScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 sections.forEach { section ->
-                    item {
+                    item(key = "header_${section.title}") {
                         Text(
                             section.title,
                             style = MaterialTheme.typography.titleLarge,
@@ -171,15 +171,18 @@ fun GroupedAddressesScreen(
                                         val snapshot: AddressEntry? = addresses.find { it.address == item.address }
                                         if (snapshot != null) {
                                             scope.launch {
-                                                container.addressRepository.delete(snapshot.address)
                                                 val result = snackbarHostState.showSnackbar(
                                                     message = "Deleted ${snapshot.label}",
                                                     actionLabel = "Undo",
-                                                    duration = SnackbarDuration.Short,
+                                                    duration = SnackbarDuration.Long,
                                                 )
-                                                if (result == SnackbarResult.ActionPerformed) {
-                                                    container.addressRepository.add(snapshot)
+                                                if (result != SnackbarResult.ActionPerformed) {
+                                                    container.addressRepository.delete(snapshot.address)
                                                 }
+                                            }
+                                        } else {
+                                            scope.launch {
+                                                snackbarHostState.showSnackbar("Address not found")
                                             }
                                         }
                                     },
