@@ -55,6 +55,7 @@ fun SettingsScreen(
             OutlinedTextField(form.refreshIntervalMinutes, { form = form.copy(refreshIntervalMinutes = it) }, label = { Text("Refresh interval minutes") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(form.jitterMinMs, { form = form.copy(jitterMinMs = it) }, label = { Text("Jitter min ms") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(form.jitterMaxMs, { form = form.copy(jitterMaxMs = it) }, label = { Text("Jitter max ms") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(form.esploraBaseUrl, { form = form.copy(esploraBaseUrl = it) }, label = { Text("Esplora API URL") }, modifier = Modifier.fillMaxWidth())
             ToggleRow("Tor required", form.torRequired) { form = form.copy(torRequired = it) }
             ToggleRow("Show total balance", form.showTotalBalance) { form = form.copy(showTotalBalance = it) }
             ToggleRow("Biometric for details", form.requireBiometricForDetails) { form = form.copy(requireBiometricForDetails = it) }
@@ -75,6 +76,7 @@ fun SettingsScreen(
                                     showTotalBalance = form.showTotalBalance,
                                     requireBiometricForDetails = form.requireBiometricForDetails,
                                     requireBiometricForReveal = form.requireBiometricForReveal,
+                                    esploraBaseUrl = form.esploraBaseUrl,
                                 )
                             }
                             container.syncBackgroundRefreshSchedule()
