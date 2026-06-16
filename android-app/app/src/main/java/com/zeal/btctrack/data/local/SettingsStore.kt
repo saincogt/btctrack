@@ -27,7 +27,7 @@ class SettingsStore(
     val settings: Flow<AppSettings> = dataStore.data.map { prefs ->
         AppSettings(
             torRequired = prefs[TOR_REQUIRED] ?: true,
-            socksHost = prefs[SOCKS_HOST] ?: "127.0.0.1",
+            socksHost = prefs[SOCKS_HOST] ?: "",
             socksPort = prefs[SOCKS_PORT] ?: 9050,
             refreshIntervalMinutes = prefs[REFRESH_INTERVAL_MINUTES] ?: 60,
             showTotalBalance = prefs[SHOW_TOTAL_BALANCE] ?: true,
@@ -44,7 +44,7 @@ class SettingsStore(
             val updated = transform(
                 AppSettings(
                     torRequired = prefs[TOR_REQUIRED] ?: true,
-                    socksHost = prefs[SOCKS_HOST] ?: "127.0.0.1",
+                    socksHost = prefs[SOCKS_HOST] ?: "",
                     socksPort = prefs[SOCKS_PORT] ?: 9050,
                     refreshIntervalMinutes = prefs[REFRESH_INTERVAL_MINUTES] ?: 60,
                     showTotalBalance = prefs[SHOW_TOTAL_BALANCE] ?: true,

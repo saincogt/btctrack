@@ -5,8 +5,8 @@ import java.net.InetSocketAddress
 import java.net.Proxy
 
 object TorSocksProxyFactory {
-    fun from(settings: AppSettings): Proxy = Proxy(
-        Proxy.Type.SOCKS,
-        InetSocketAddress(settings.socksHost, settings.socksPort),
-    )
+    fun from(settings: AppSettings): Proxy? {
+        if (settings.socksHost.isBlank()) return null
+        return Proxy(Proxy.Type.SOCKS, InetSocketAddress(settings.socksHost, settings.socksPort))
+    }
 }

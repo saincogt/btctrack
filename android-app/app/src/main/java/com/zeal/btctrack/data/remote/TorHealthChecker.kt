@@ -1,5 +1,6 @@
 package com.zeal.btctrack.data.remote
 
+import android.util.Log
 import com.zeal.btctrack.domain.model.AppSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -15,13 +16,14 @@ class TorHealthChecker(
     private val proxyConfig = TorProxyConfig.from(appSettings).also { it.validate() }
     private val api = MempoolOnionApi(baseUrl)
     private val client = httpClient ?: OkHttpClient.Builder()
-        .proxy(TorSocksProxyFactory.from(appSettings))
+        .apply { TorSocksProxyFactory.from(appSettings)?.let { proxy(it) } }
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .build()
 
     suspend fun check(): TorHealthStatus = withContext(Dispatchers.IO) {
         val request = api.tipHeightRequest()
+        Log.d("BtcTrack", "TorHealthChecker: connecting to ${request.url} via ${proxyConfig.host}:${proxyConfig.port}")
         try {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
@@ -48,6 +50,7 @@ class TorHealthChecker(
                 }
             }
         } catch (error: IOException) {
+            Log.e("BtcTrack", "TorHealthChecker FAILED: ${error::class.java.simpleName}: ${error.message}", error)
             TorHealthStatus(
                 ok = false,
                 endpointHost = api.host,

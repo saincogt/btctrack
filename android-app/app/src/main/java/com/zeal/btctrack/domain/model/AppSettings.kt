@@ -5,7 +5,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AppSettings(
     val torRequired: Boolean = true,
-    val socksHost: String = "127.0.0.1",
+    val socksHost: String = "",
     val socksPort: Int = 9050,
     val refreshIntervalMinutes: Int = 60,
     val showTotalBalance: Boolean = true,
