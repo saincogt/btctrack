@@ -24,9 +24,16 @@ class TorOnlyEndpointPolicyTest {
         val proxy = TorSocksProxyFactory.from(
             AppSettings(socksHost = "127.0.0.1", socksPort = 9050)
         )
+        requireNotNull(proxy) { "Expected non-null proxy for non-blank socksHost" }
         val address = proxy.address() as java.net.InetSocketAddress
         assertEquals("127.0.0.1", address.hostString)
         assertEquals(9050, address.port)
         assertEquals(java.net.Proxy.Type.SOCKS, proxy.type())
+    }
+
+    @Test
+    fun `returns null proxy when socksHost is blank`() {
+        val proxy = TorSocksProxyFactory.from(AppSettings(socksHost = ""))
+        assertEquals(null, proxy)
     }
 }

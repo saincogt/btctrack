@@ -1,6 +1,5 @@
 package com.zeal.btctrack.data.remote
 
-import android.util.Log
 import com.zeal.btctrack.domain.model.AppSettings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,7 +23,6 @@ class TorHealthChecker(
 
     suspend fun check(): TorHealthStatus = withContext(Dispatchers.IO) {
         val request = api.tipHeightRequest()
-        Log.d("BtcTrack", "TorHealthChecker: connecting to ${request.url} via ${proxyConfig?.let { "${it.host}:${it.port}" } ?: "VPN"}")
         try {
             client.newCall(request).execute().use { response ->
                 val via = proxyConfig?.let { " via ${it.host}:${it.port}" } ?: " (VPN mode)"
@@ -52,7 +50,6 @@ class TorHealthChecker(
                 }
             }
         } catch (error: IOException) {
-            Log.e("BtcTrack", "TorHealthChecker FAILED: ${error::class.java.simpleName}: ${error.message}", error)
             TorHealthStatus(
                 ok = false,
                 endpointHost = api.host,

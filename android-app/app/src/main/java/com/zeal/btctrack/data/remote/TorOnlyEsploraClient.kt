@@ -5,7 +5,6 @@ import com.zeal.btctrack.domain.model.AppSettings
 import com.zeal.btctrack.domain.model.BalanceSnapshot
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import android.util.Log
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -34,10 +33,8 @@ class TorOnlyEsploraClient(
             .addPathSegments("address/$address")
             .build()
         val request = Request.Builder().url(url).get().build()
-        Log.d("BtcTrack", "fetchBalance: url=$url proxy=${client.proxy}")
         try {
             client.newCall(request).execute().use { response ->
-                Log.d("BtcTrack", "fetchBalance: HTTP ${response.code}")
                 val body = response.body?.string().orEmpty()
                 if (!response.isSuccessful) {
                     return@withContext failureSnapshot(
@@ -54,7 +51,6 @@ class TorOnlyEsploraClient(
                 )
             }
         } catch (error: IOException) {
-            Log.e("BtcTrack", "fetchBalance FAILED: ${error::class.java.simpleName}: ${error.message}", error)
             failureSnapshot(address, fetchedAt, error.message ?: error::class.java.simpleName)
         }
     }
