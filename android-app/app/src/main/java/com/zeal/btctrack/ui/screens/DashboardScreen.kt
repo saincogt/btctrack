@@ -51,6 +51,7 @@ fun DashboardScreen(
     val biometricGate: BiometricGate? = remember(context) {
         context.findFragmentActivity()?.let(::AndroidBiometricGate)
     }
+    val torReachable by container.torReachable.collectAsStateCompat(false)
     var torStatus by remember { mutableStateOf("Checking Tor...") }
     var showBalance by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
@@ -91,6 +92,7 @@ fun DashboardScreen(
                         }
                     },
                     modifier = Modifier.weight(1f),
+                    enabled = !isRefreshing && torReachable,
                 ) {
                     Text(if (isRefreshing) "Refreshing..." else "Refresh now")
                 }

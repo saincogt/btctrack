@@ -36,6 +36,7 @@ class SettingsStore(
             jitterMinMs = prefs[JITTER_MIN_MS] ?: 500L,
             jitterMaxMs = prefs[JITTER_MAX_MS] ?: 2_000L,
             esploraBaseUrl = prefs[ESPLORA_BASE_URL] ?: "http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/api/",
+            balanceUnit = prefs[BALANCE_UNIT] ?: "sats",
         )
     }
 
@@ -53,6 +54,7 @@ class SettingsStore(
                     jitterMinMs = prefs[JITTER_MIN_MS] ?: 500L,
                     jitterMaxMs = prefs[JITTER_MAX_MS] ?: 2_000L,
                     esploraBaseUrl = prefs[ESPLORA_BASE_URL] ?: "http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/api/",
+                    balanceUnit = prefs[BALANCE_UNIT] ?: "sats",
                 )
             )
 
@@ -66,6 +68,7 @@ class SettingsStore(
             prefs[JITTER_MIN_MS] = updated.jitterMinMs
             prefs[JITTER_MAX_MS] = updated.jitterMaxMs
             prefs[ESPLORA_BASE_URL] = updated.esploraBaseUrl
+            prefs[BALANCE_UNIT] = updated.balanceUnit
         }
     }
 
@@ -82,5 +85,6 @@ class SettingsStore(
         private val JITTER_MIN_MS = longPreferencesKey("jitter_min_ms")
         private val JITTER_MAX_MS = longPreferencesKey("jitter_max_ms")
         private val ESPLORA_BASE_URL = stringPreferencesKey("esplora_base_url")
+        private val BALANCE_UNIT = stringPreferencesKey("balance_unit")
     }
 }

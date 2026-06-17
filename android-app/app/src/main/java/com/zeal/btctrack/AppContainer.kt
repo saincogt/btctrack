@@ -19,9 +19,12 @@ import com.zeal.btctrack.domain.repository.SettingsRepository
 import com.zeal.btctrack.domain.usecase.ExportAddressesUseCase
 import com.zeal.btctrack.domain.usecase.ImportAddressesUseCase
 import com.zeal.btctrack.domain.usecase.RefreshTrackedAddressesUseCase
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 
 class AppContainer(context: Context) {
+    val torReachable = MutableStateFlow(false)
+
     private val appContext = context.applicationContext
     private val backgroundRefreshScheduler = BackgroundRefreshScheduler(appContext)
 
@@ -61,6 +64,7 @@ class AppContainer(context: Context) {
     suspend fun torHealthStatus(): String {
         val settings = settingsRepository.observe().first()
         val status = TorHealthChecker(baseUrl = settings.esploraBaseUrl, appSettings = settings).check()
+        torReachable.value = status.ok
         return if (status.ok) {
             "Tor reachable via ${settings.socksHost}:${settings.socksPort}"
         } else {

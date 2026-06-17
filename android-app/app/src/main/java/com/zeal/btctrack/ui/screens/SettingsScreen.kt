@@ -2,6 +2,7 @@ package com.zeal.btctrack.ui.screens
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,11 +10,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,6 +64,23 @@ fun SettingsScreen(
             ToggleRow("Biometric for details", form.requireBiometricForDetails) { form = form.copy(requireBiometricForDetails = it) }
             ToggleRow("Biometric for reveal", form.requireBiometricForReveal) { form = form.copy(requireBiometricForReveal = it) }
 
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Balance unit")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("sats", "BTC").forEach { unit ->
+                        FilterChip(
+                            selected = form.balanceUnit == unit,
+                            onClick = { form = form.copy(balanceUnit = unit) },
+                            label = { Text(unit) },
+                        )
+                    }
+                }
+            }
+
             Button(
                 onClick = {
                     scope.launch {
@@ -77,6 +97,7 @@ fun SettingsScreen(
                                     requireBiometricForDetails = form.requireBiometricForDetails,
                                     requireBiometricForReveal = form.requireBiometricForReveal,
                                     esploraBaseUrl = form.esploraBaseUrl,
+                                    balanceUnit = form.balanceUnit,
                                 )
                             }
                             container.syncBackgroundRefreshSchedule()

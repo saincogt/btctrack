@@ -30,6 +30,7 @@ data class SettingsFormState(
     val requireBiometricForDetails: Boolean = true,
     val requireBiometricForReveal: Boolean = true,
     val esploraBaseUrl: String = "http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/api/",
+    val balanceUnit: String = "sats",
 ) {
     companion object {
         fun from(settings: AppSettings) = SettingsFormState(
@@ -43,6 +44,7 @@ data class SettingsFormState(
             requireBiometricForDetails = settings.requireBiometricForDetails,
             requireBiometricForReveal = settings.requireBiometricForReveal,
             esploraBaseUrl = settings.esploraBaseUrl,
+            balanceUnit = settings.balanceUnit,
         )
     }
 }
@@ -57,7 +59,7 @@ fun buildDashboardState(
     return DashboardUiState(
         torStatus = torStatus,
         trackedCount = addresses.size,
-        lastRefreshLabel = lastRefreshAt?.toString() ?: "Not available",
+        lastRefreshLabel = lastRefreshAt?.let { formatRelativeTime(it) } ?: "Never",
         totalBalanceSats = balances.filter { it.success }.sumOf { it.confirmedSats + it.unconfirmedSats },
         showBalance = showBalance,
     )
