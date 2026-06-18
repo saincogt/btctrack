@@ -18,7 +18,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -52,16 +54,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.biometric.BiometricManager
 import com.zeal.btctrack.AppContainer
-import com.zeal.btctrack.domain.model.AddressEntry
-import com.zeal.btctrack.ui.buildGroupedSections
+import com.zeal.btctrack.ui.AddressTreeNode
+import com.zeal.btctrack.ui.buildAddressTree
 import com.zeal.btctrack.ui.collectAsStateCompat
+import com.zeal.btctrack.ui.flattenVisible
 import com.zeal.btctrack.ui.formatBalance
 import com.zeal.btctrack.ui.formatRelativeTime
 import com.zeal.btctrack.ui.redactedAddress
-import androidx.biometric.BiometricManager
 import com.zeal.btctrack.ui.security.AndroidBiometricGate
 import com.zeal.btctrack.ui.security.BiometricGate
 import com.zeal.btctrack.ui.security.BiometricPromptRequest
@@ -102,14 +106,16 @@ fun GroupedAddressesScreen(
 
     val revealedAddresses = remember { mutableStateMapOf<String, Boolean>() }
     val expandedAddresses = remember { mutableStateMapOf<String, Boolean>() }
+    val groupExpandState = remember { mutableStateMapOf<String, Boolean>() }
     val refreshingAddresses = remember { mutableStateMapOf<String, Boolean>() }
     var menuAddress by remember { mutableStateOf<String?>(null) }
     var detailsAddress by remember { mutableStateOf<String?>(null) }
 
     val balancesByAddress = remember(balances) { balances.associateBy { it.address } }
-    val sections = remember(addresses, balances) {
-        buildGroupedSections(addresses, balancesByAddress)
+    val tree = remember(addresses, balances) {
+        buildAddressTree(addresses, balancesByAddress)
     }
+    val flatItems = flattenVisible(tree, groupExpandState)
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Addresses") }) },
@@ -120,7 +126,7 @@ fun GroupedAddressesScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
-        if (sections.isEmpty()) {
+        if (tree.isEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -143,241 +149,268 @@ fun GroupedAddressesScreen(
                     .padding(innerPadding),
                 verticalArrangement = Arrangement.spacedBy(0.dp),
             ) {
-                sections.forEach { section ->
-                    item(key = "header_${section.title}") {
-                        val groupExcluded = settings?.excludedGroups?.contains(section.title) == true
-                        val groupTotal = section.items.sumOf { it.confirmedSats }
-                        Column(modifier = Modifier.fillMaxWidth()) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 16.dp, end = 4.dp, top = 16.dp, bottom = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                Text(
-                                    section.title.uppercase(),
-                                    style = SectionLabelStyle,
-                                    color = if (groupExcluded)
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    else
-                                        BitcoinOrange,
-                                    modifier = Modifier.weight(1f),
-                                )
-                                Text(
-                                    formatBalance(groupTotal, balanceUnit),
-                                    style = MonoBodyStyle,
-                                    color = if (groupExcluded)
-                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                                    else
-                                        MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                                IconButton(
-                                    onClick = {
-                                        scope.launch {
-                                            val current = settings?.excludedGroups ?: emptySet()
-                                            val updated = if (groupExcluded) current - section.title else current + section.title
-                                            container.settingsRepository.update { it.copy(excludedGroups = updated) }
-                                        }
-                                    },
-                                    modifier = Modifier.size(32.dp),
+                items(
+                    flatItems,
+                    key = { item ->
+                        when (val node = item.node) {
+                            is AddressTreeNode.Group -> "g:${node.path}"
+                            is AddressTreeNode.Leaf -> "l:${node.entry.address}"
+                        }
+                    },
+                ) { flatItem ->
+                    when (val node = flatItem.node) {
+                        is AddressTreeNode.Group -> {
+                            val expanded = groupExpandState[node.path] == true
+                            val excluded = settings?.excludedGroups?.contains(node.path) == true
+                            Column(modifier = Modifier.fillMaxWidth()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .combinedClickable(
+                                            onClick = { groupExpandState[node.path] = !expanded },
+                                            onLongClick = {},
+                                        )
+                                        .padding(
+                                            start = (16 + flatItem.depth * 16).dp,
+                                            end = 4.dp,
+                                            top = 12.dp,
+                                            bottom = 4.dp,
+                                        ),
+                                    verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Icon(
-                                        if (groupExcluded) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                        contentDescription = if (groupExcluded) "Include in total" else "Exclude from total",
-                                        modifier = Modifier.size(16.dp),
-                                        tint = if (groupExcluded)
+                                        if (expanded) Icons.Default.KeyboardArrowDown
+                                        else Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                        contentDescription = if (expanded) "Collapse" else "Expand",
+                                        modifier = Modifier.size(14.dp),
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(
+                                        node.name.uppercase(),
+                                        style = SectionLabelStyle,
+                                        color = if (excluded) MaterialTheme.colorScheme.onSurfaceVariant else BitcoinOrange,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    Text(
+                                        formatBalance(node.totalSats, balanceUnit),
+                                        style = MonoBodyStyle,
+                                        color = if (excluded)
                                             MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                                         else
                                             MaterialTheme.colorScheme.onSurfaceVariant,
                                     )
-                                }
-                            }
-                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                        }
-                    }
-                    items(section.items, key = { it.address }) { item ->
-                        val expanded = expandedAddresses[item.address] == true
-                        val revealed = revealedAddresses[item.address] == true
-                        val isRefreshing = refreshingAddresses[item.address] == true
-                        val snapshot = balancesByAddress[item.address]
-                        val totalSats = snapshot?.confirmedSats ?: 0L
-
-                        val hasLabel = item.label.isNotBlank()
-                        val truncatedAddress = "${item.address.take(6)}...${item.address.takeLast(4)}"
-
-                        Box {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .combinedClickable(
-                                        onClick = { expandedAddresses[item.address] = !expanded },
-                                        onLongClick = { menuAddress = item.address },
-                                    )
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            if (hasLabel) item.label else truncatedAddress,
-                                            style = if (hasLabel) MaterialTheme.typography.bodyMedium else MonoBodyStyle,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                        if (hasLabel) {
-                                            Text(
-                                                truncatedAddress,
-                                                style = MonoBodyStyle,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
-                                        }
-                                    }
-                                    Spacer(Modifier.width(8.dp))
-                                    Text(
-                                        formatBalance(totalSats, balanceUnit),
-                                        style = MonoBodyStyle,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    if (isRefreshing) {
-                                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                                    } else {
-                                        IconButton(
-                                            onClick = {
-                                                if (!torReachable) {
-                                                    scope.launch { snackbarHostState.showSnackbar("Tor not reachable") }
-                                                    return@IconButton
-                                                }
-                                                scope.launch {
-                                                    refreshingAddresses[item.address] = true
-                                                    try {
-                                                        container.refreshAddress(item.address)
-                                                    } finally {
-                                                        refreshingAddresses[item.address] = false
-                                                    }
-                                                }
-                                            },
-                                            modifier = Modifier.size(32.dp),
-                                            enabled = torReachable,
-                                        ) {
-                                            Icon(
-                                                Icons.Default.Refresh,
-                                                contentDescription = "Refresh",
-                                                modifier = Modifier.size(18.dp),
-                                                tint = if (torReachable) MaterialTheme.colorScheme.primary
-                                                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
-                                            )
-                                        }
-                                    }
-                                }
-
-                                AnimatedVisibility(visible = expanded) {
-                                    Column(
-                                        modifier = Modifier.padding(top = 12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    IconButton(
+                                        onClick = {
+                                            scope.launch {
+                                                val current = settings?.excludedGroups ?: emptySet()
+                                                val updated = if (excluded) current - node.path else current + node.path
+                                                container.settingsRepository.update { it.copy(excludedGroups = updated) }
+                                            }
+                                        },
+                                        modifier = Modifier.size(32.dp),
                                     ) {
-                                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                                        Row(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .combinedClickable(
-                                                    onClick = {
-                                                        clipboard.setText(AnnotatedString(item.address))
-                                                        scope.launch { snackbarHostState.showSnackbar("Address copied") }
-                                                    },
-                                                    onLongClick = {},
-                                                )
-                                                .padding(vertical = 4.dp),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                        ) {
+                                        Icon(
+                                            if (excluded) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                            contentDescription = if (excluded) "Include in total" else "Exclude from total",
+                                            modifier = Modifier.size(16.dp),
+                                            tint = if (excluded)
+                                                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                                            else
+                                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                            }
+                        }
+                        is AddressTreeNode.Leaf -> {
+                            val entry = node.entry
+                            val expanded = expandedAddresses[entry.address] == true
+                            val revealed = revealedAddresses[entry.address] == true
+                            val isRefreshing = refreshingAddresses[entry.address] == true
+                            val snapshot = balancesByAddress[entry.address]
+                            val hasLabel = entry.label.isNotBlank()
+                            val truncatedAddress = "${entry.address.take(6)}...${entry.address.takeLast(4)}"
+                            val startPad = (16 + flatItem.depth * 16).dp
+
+                            Box {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .combinedClickable(
+                                            onClick = { expandedAddresses[entry.address] = !expanded },
+                                            onLongClick = { menuAddress = entry.address },
+                                        )
+                                        .padding(start = startPad, end = 16.dp, top = 12.dp, bottom = 12.dp),
+                                ) {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                if (revealed) item.address else item.address.redactedAddress(),
-                                                style = MaterialTheme.typography.bodySmall.copy(fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace),
-                                                modifier = Modifier.weight(1f),
+                                                if (hasLabel) entry.label else truncatedAddress,
+                                                style = if (hasLabel) MaterialTheme.typography.bodyMedium else MonoBodyStyle,
                                                 maxLines = 1,
                                                 overflow = TextOverflow.Ellipsis,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                                             )
-                                            Text(
-                                                "Copy",
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.padding(start = 8.dp),
-                                            )
+                                            if (hasLabel) {
+                                                Text(
+                                                    truncatedAddress,
+                                                    style = MonoBodyStyle,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
                                         }
-                                        DetailRow("Balance", formatBalance(snapshot?.confirmedSats ?: 0L, balanceUnit))
-                                        DetailRow("Updated", formatRelativeTime(snapshot?.fetchedAt ?: 0L))
+                                        Spacer(Modifier.width(8.dp))
+                                        Text(
+                                            formatBalance(node.confirmedSats, balanceUnit),
+                                            style = MonoBodyStyle,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                        Spacer(Modifier.width(4.dp))
+                                        if (isRefreshing) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(18.dp),
+                                                strokeWidth = 2.dp,
+                                            )
+                                        } else {
+                                            IconButton(
+                                                onClick = {
+                                                    if (!torReachable) {
+                                                        scope.launch { snackbarHostState.showSnackbar("Tor not reachable") }
+                                                        return@IconButton
+                                                    }
+                                                    scope.launch {
+                                                        refreshingAddresses[entry.address] = true
+                                                        try {
+                                                            container.refreshAddress(entry.address)
+                                                        } finally {
+                                                            refreshingAddresses[entry.address] = false
+                                                        }
+                                                    }
+                                                },
+                                                modifier = Modifier.size(32.dp),
+                                                enabled = torReachable,
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Refresh,
+                                                    contentDescription = "Refresh",
+                                                    modifier = Modifier.size(18.dp),
+                                                    tint = if (torReachable) MaterialTheme.colorScheme.primary
+                                                           else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                                                )
+                                            }
+                                        }
+                                    }
+
+                                    AnimatedVisibility(visible = expanded) {
+                                        Column(
+                                            modifier = Modifier.padding(top = 12.dp),
+                                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                                        ) {
+                                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                                            Row(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .combinedClickable(
+                                                        onClick = {
+                                                            clipboard.setText(AnnotatedString(entry.address))
+                                                            scope.launch { snackbarHostState.showSnackbar("Address copied") }
+                                                        },
+                                                        onLongClick = {},
+                                                    )
+                                                    .padding(vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically,
+                                            ) {
+                                                Text(
+                                                    if (revealed) entry.address else entry.address.redactedAddress(),
+                                                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                                    modifier = Modifier.weight(1f),
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                                Text(
+                                                    "Copy",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary,
+                                                    modifier = Modifier.padding(start = 8.dp),
+                                                )
+                                            }
+                                            DetailRow("Balance", formatBalance(snapshot?.confirmedSats ?: 0L, balanceUnit))
+                                            DetailRow("Updated", formatRelativeTime(snapshot?.fetchedAt ?: 0L))
+                                        }
                                     }
                                 }
-                            }
 
-                            DropdownMenu(
-                                expanded = menuAddress == item.address,
-                                onDismissRequest = { menuAddress = null },
-                            ) {
-                                DropdownMenuItem(
-                                    text = { Text(if (revealed) "Hide address" else "Reveal address") },
-                                    onClick = {
-                                        menuAddress = null
-                                        scope.launch {
-                                            val requireBiometric = biometricAvailable &&
-                                                (settings?.requireBiometricForReveal ?: true)
-                                            val gate = biometricGate ?: SensitiveRevealController.noOpGate()
-                                            val result = SensitiveRevealController(gate).toggle(
-                                                currentlyVisible = revealed,
-                                                requireBiometric = requireBiometric,
-                                                request = BiometricPromptRequest(
-                                                    title = "Reveal full address",
-                                                    subtitle = item.label,
-                                                    description = "Authenticate to reveal tracked Bitcoin address",
-                                                ),
-                                            )
-                                            revealedAddresses[item.address] = result.visible
-                                        }
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Details") },
-                                    onClick = {
-                                        menuAddress = null
-                                        detailsAddress = item.address
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Edit") },
-                                    onClick = {
-                                        menuAddress = null
-                                        onEditClick(item.address)
-                                    },
-                                )
-                                DropdownMenuItem(
-                                    text = { Text("Delete") },
-                                    onClick = {
-                                        menuAddress = null
-                                        val snapshot2: AddressEntry? = addresses.find { it.address == item.address }
-                                        if (snapshot2 != null) {
+                                DropdownMenu(
+                                    expanded = menuAddress == entry.address,
+                                    onDismissRequest = { menuAddress = null },
+                                ) {
+                                    DropdownMenuItem(
+                                        text = { Text(if (revealed) "Hide address" else "Reveal address") },
+                                        onClick = {
+                                            menuAddress = null
                                             scope.launch {
-                                                val result = snackbarHostState.showSnackbar(
-                                                    message = "Deleted ${snapshot2.label}",
-                                                    actionLabel = "Undo",
-                                                    duration = SnackbarDuration.Long,
+                                                val requireBiometric = biometricAvailable &&
+                                                    (settings?.requireBiometricForReveal ?: true)
+                                                val gate = biometricGate ?: SensitiveRevealController.noOpGate()
+                                                val result = SensitiveRevealController(gate).toggle(
+                                                    currentlyVisible = revealed,
+                                                    requireBiometric = requireBiometric,
+                                                    request = BiometricPromptRequest(
+                                                        title = "Reveal full address",
+                                                        subtitle = entry.label,
+                                                        description = "Authenticate to reveal tracked Bitcoin address",
+                                                    ),
                                                 )
-                                                if (result != SnackbarResult.ActionPerformed) {
-                                                    container.addressRepository.delete(snapshot2.address)
-                                                } else {
-                                                    scope.launch { snackbarHostState.showSnackbar("Undo successful") }
-                                                }
+                                                revealedAddresses[entry.address] = result.visible
                                             }
-                                        } else {
-                                            scope.launch { snackbarHostState.showSnackbar("Address not found") }
-                                        }
-                                    },
-                                )
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Details") },
+                                        onClick = {
+                                            menuAddress = null
+                                            detailsAddress = entry.address
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Edit") },
+                                        onClick = {
+                                            menuAddress = null
+                                            onEditClick(entry.address)
+                                        },
+                                    )
+                                    DropdownMenuItem(
+                                        text = { Text("Delete") },
+                                        onClick = {
+                                            menuAddress = null
+                                            val found = addresses.find { it.address == entry.address }
+                                            if (found != null) {
+                                                scope.launch {
+                                                    val result = snackbarHostState.showSnackbar(
+                                                        message = "Deleted ${found.label.ifBlank { entry.address.redactedAddress() }}",
+                                                        actionLabel = "Undo",
+                                                        duration = SnackbarDuration.Long,
+                                                    )
+                                                    if (result != SnackbarResult.ActionPerformed) {
+                                                        container.addressRepository.delete(found.address)
+                                                    } else {
+                                                        scope.launch { snackbarHostState.showSnackbar("Undo successful") }
+                                                    }
+                                                }
+                                            } else {
+                                                scope.launch { snackbarHostState.showSnackbar("Address not found") }
+                                            }
+                                        },
+                                    )
+                                }
                             }
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                         }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f))
                     }
                 }
                 item { Spacer(Modifier.size(80.dp)) }
