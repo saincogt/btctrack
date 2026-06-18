@@ -1,5 +1,6 @@
 package com.zeal.btctrack.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,125 +9,148 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.ListItem
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
-import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.zeal.btctrack.AppContainer
-import com.zeal.btctrack.ui.SettingsFormState
 import com.zeal.btctrack.ui.collectAsStateCompat
+import com.zeal.btctrack.ui.theme.SectionLabelStyle
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     container: AppContainer,
+    onProxySettingsClick: () -> Unit,
     onImportClick: () -> Unit,
     onExportClick: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     val settings by container.settingsRepository.observe().collectAsStateCompat(null)
-    var status by remember { mutableStateOf("Settings are stored locally only.") }
-    var form by remember(settings) { mutableStateOf(settings?.let { SettingsFormState.from(it) } ?: SettingsFormState()) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Settings") }) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            OutlinedTextField(form.socksHost, { form = form.copy(socksHost = it) }, label = { Text("SOCKS host") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(form.socksPort, { form = form.copy(socksPort = it) }, label = { Text("SOCKS port") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(form.refreshIntervalMinutes, { form = form.copy(refreshIntervalMinutes = it) }, label = { Text("Refresh interval minutes") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(form.jitterMinMs, { form = form.copy(jitterMinMs = it) }, label = { Text("Jitter min ms") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(form.jitterMaxMs, { form = form.copy(jitterMaxMs = it) }, label = { Text("Jitter max ms") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(form.esploraBaseUrl, { form = form.copy(esploraBaseUrl = it) }, label = { Text("Esplora API URL") }, modifier = Modifier.fillMaxWidth())
-            ToggleRow("Tor required", form.torRequired) { form = form.copy(torRequired = it) }
-            ToggleRow("Show total balance", form.showTotalBalance) { form = form.copy(showTotalBalance = it) }
-            ToggleRow("Biometric for details", form.requireBiometricForDetails) { form = form.copy(requireBiometricForDetails = it) }
-            ToggleRow("Biometric for reveal", form.requireBiometricForReveal) { form = form.copy(requireBiometricForReveal = it) }
+            SectionHeader("GENERAL")
+            Column(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                ToggleRow(
+                    label = "Show balance by default",
+                    checked = settings?.showTotalBalance ?: true,
+                    onCheckedChange = { checked ->
+                        scope.launch {
+                            container.settingsRepository.update { it.copy(showTotalBalance = checked) }
+                        }
+                    },
+                )
+                ToggleRow(
+                    label = "Tor required",
+                    checked = settings?.torRequired ?: true,
+                    onCheckedChange = { checked ->
+                        scope.launch {
+                            container.settingsRepository.update { it.copy(torRequired = checked) }
+                        }
+                    },
+                )
+            }
 
+            HorizontalDivider()
+            SectionHeader("DISPLAY")
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text("Balance unit")
+                Text("Balance unit", style = MaterialTheme.typography.bodyMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("sats", "BTC").forEach { unit ->
                         FilterChip(
-                            selected = form.balanceUnit == unit,
-                            onClick = { form = form.copy(balanceUnit = unit) },
+                            selected = (settings?.balanceUnit ?: "sats") == unit,
+                            onClick = {
+                                scope.launch {
+                                    container.settingsRepository.update { it.copy(balanceUnit = unit) }
+                                }
+                            },
                             label = { Text(unit) },
                         )
                     }
                 }
             }
 
-            Button(
-                onClick = {
-                    scope.launch {
-                        status = runCatching {
-                            container.settingsRepository.update {
-                                it.copy(
-                                    torRequired = form.torRequired,
-                                    socksHost = form.socksHost,
-                                    socksPort = form.socksPort.toInt(),
-                                    refreshIntervalMinutes = form.refreshIntervalMinutes.toInt(),
-                                    jitterMinMs = form.jitterMinMs.toLong(),
-                                    jitterMaxMs = form.jitterMaxMs.toLong(),
-                                    showTotalBalance = form.showTotalBalance,
-                                    requireBiometricForDetails = form.requireBiometricForDetails,
-                                    requireBiometricForReveal = form.requireBiometricForReveal,
-                                    esploraBaseUrl = form.esploraBaseUrl,
-                                    balanceUnit = form.balanceUnit,
-                                )
-                            }
-                            container.syncBackgroundRefreshSchedule()
-                            "Settings saved"
-                        }.getOrElse { error -> "Save failed: ${error.message}" }
-                    }
+            HorizontalDivider()
+            SectionHeader("NETWORK")
+            ListItem(
+                headlineContent = { Text("Proxy settings") },
+                supportingContent = { Text("Tor SOCKS proxy and Esplora URL") },
+                trailingContent = {
+                    Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null)
                 },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Save settings") }
+                modifier = Modifier.clickable(onClick = onProxySettingsClick),
+            )
 
-            Button(
-                onClick = {
+            HorizontalDivider()
+            SectionHeader("DATA")
+            ListItem(
+                headlineContent = { Text("Import addresses") },
+                modifier = Modifier.clickable(onClick = onImportClick),
+            )
+            ListItem(
+                headlineContent = { Text("Export addresses") },
+                modifier = Modifier.clickable(onClick = onExportClick),
+            )
+            ListItem(
+                headlineContent = {
+                    Text("Clear balance cache", color = MaterialTheme.colorScheme.error)
+                },
+                modifier = Modifier.clickable {
                     scope.launch {
                         container.balanceRepository.clearAll()
-                        status = "Cached balances cleared"
+                        snackbarHostState.showSnackbar("Balance cache cleared")
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
-            ) { Text("Clear balance cache") }
-
-            Text(status)
-            Button(onClick = onImportClick, modifier = Modifier.fillMaxWidth()) {
-                Text("Import addresses")
-            }
-            Button(onClick = onExportClick, modifier = Modifier.fillMaxWidth()) {
-                Text("Export addresses")
-            }
+            )
         }
     }
+}
+
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = SectionLabelStyle,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
+    )
 }
 
 @Composable
@@ -135,11 +159,12 @@ private fun ToggleRow(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
 ) {
-    androidx.compose.foundation.layout.Row(
+    Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label)
+        Text(label, style = MaterialTheme.typography.bodyMedium)
         Switch(checked = checked, onCheckedChange = onCheckedChange)
     }
 }
