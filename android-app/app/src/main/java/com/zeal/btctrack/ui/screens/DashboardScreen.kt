@@ -1,18 +1,21 @@
 package com.zeal.btctrack.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -24,134 +27,199 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.zeal.btctrack.AppContainer
-import com.zeal.btctrack.ui.DashboardUiState
+import com.zeal.btctrack.R
 import com.zeal.btctrack.ui.buildDashboardState
 import com.zeal.btctrack.ui.collectAsStateCompat
-import com.zeal.btctrack.ui.security.AndroidBiometricGate
-import com.zeal.btctrack.ui.security.BiometricGate
-import com.zeal.btctrack.ui.security.BiometricPromptRequest
-import com.zeal.btctrack.ui.security.SensitiveRevealController
-import com.zeal.btctrack.ui.security.findFragmentActivity
+import com.zeal.btctrack.ui.formatBalance
+import com.zeal.btctrack.ui.theme.BitcoinOrange
+import com.zeal.btctrack.ui.theme.MonoDisplayStyle
+import com.zeal.btctrack.ui.theme.SectionLabelStyle
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DashboardScreen(
-    container: AppContainer,
-) {
+fun DashboardScreen(container: AppContainer) {
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
     val addresses by container.addressRepository.observeAll().collectAsStateCompat(emptyList())
     val balances by container.balanceRepository.observeAll().collectAsStateCompat(emptyList())
     val settings by container.settingsRepository.observe().collectAsStateCompat(null)
-    val biometricGate: BiometricGate? = remember(context) {
-        context.findFragmentActivity()?.let(::AndroidBiometricGate)
-    }
     val torReachable by container.torReachable.collectAsStateCompat(false)
-    var torStatus by remember { mutableStateOf("Checking Tor...") }
+
+    var torStatus by remember { mutableStateOf("") }
     var showBalance by remember { mutableStateOf(false) }
+    var balanceInitialized by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
-    var revealStatus by remember { mutableStateOf("Balance hidden") }
 
     LaunchedEffect(Unit) {
         torStatus = container.torHealthStatus()
     }
 
-    val state = remember(addresses, balances, torStatus, showBalance) {
-        buildDashboardState(addresses, balances, torStatus, showBalance)
+    LaunchedEffect(settings) {
+        if (settings != null && !balanceInitialized) {
+            showBalance = settings!!.showTotalBalance
+            balanceInitialized = true
+        }
+    }
+
+    val state = remember(addresses, balances, torStatus, showBalance, settings) {
+        buildDashboardState(
+            addresses = addresses,
+            balances = balances,
+            torStatus = torStatus,
+            showBalance = showBalance,
+            balanceUnit = settings?.balanceUnit ?: "sats",
+            excludedGroups = settings?.excludedGroups ?: emptySet(),
+        )
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("BTC Track") }) },
+        topBar = {
+            TopAppBar(
+                title = { Text("BTC Track", fontWeight = FontWeight.SemiBold) },
+                actions = {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_tor_onion),
+                        contentDescription = if (torReachable) "Tor online" else "Tor offline",
+                        tint = Color.Unspecified,
+                        modifier = Modifier
+                            .padding(8.dp)
+                            .size(22.dp)
+                            .alpha(if (torReachable) 1f else 0.25f),
+                    )
+                    IconButton(
+                        onClick = {
+                            scope.launch {
+                                isRefreshing = true
+                                container.refreshAllTrackedAddresses()
+                                torStatus = container.torHealthStatus()
+                                isRefreshing = false
+                            }
+                        },
+                        enabled = torReachable && !isRefreshing,
+                    ) {
+                        if (isRefreshing) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                strokeWidth = 2.dp,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        } else {
+                            Icon(
+                                Icons.Default.Refresh,
+                                contentDescription = "Refresh",
+                                tint = if (torReachable) MaterialTheme.colorScheme.onSurface
+                                       else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.25f),
+                            )
+                        }
+                    }
+                },
+            )
+        },
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+                .padding(horizontal = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            DashboardSummaryCard(state = state, isRefreshing = isRefreshing, revealStatus = revealStatus)
+            Spacer(Modifier.weight(2f))
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            // Tap-to-toggle balance area
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { showBalance = !showBalance }
+                    .padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                Button(
-                    onClick = {
-                        scope.launch {
-                            isRefreshing = true
-                            container.refreshAllTrackedAddresses()
-                            torStatus = container.torHealthStatus()
-                            isRefreshing = false
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                    enabled = !isRefreshing && torReachable,
-                ) {
-                    Text(if (isRefreshing) "Refreshing..." else "Refresh now")
+                if (state.showBalance) {
+                    Text(
+                        text = formatBalance(state.totalBalanceSats, state.balanceUnit),
+                        style = MonoDisplayStyle,
+                        color = BitcoinOrange,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                } else {
+                    Text(
+                        text = "• • •",
+                        style = MonoDisplayStyle,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        textAlign = TextAlign.Center,
+                        letterSpacing = 8.sp,
+                    )
                 }
-                Button(
-                    onClick = {
-                        scope.launch {
-                            val requireBiometric = settings?.requireBiometricForReveal ?: true
-                            val gate = biometricGate ?: object : BiometricGate {
-                                override suspend fun authenticate(request: BiometricPromptRequest) =
-                                    com.zeal.btctrack.ui.security.BiometricGateResult(
-                                        success = false,
-                                        message = "Biometric unavailable",
-                                    )
+                Text(
+                    text = if (state.showBalance) "Tap to hide" else "Tap to reveal",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
+                )
+            }
+
+            // Unit chips — outside tap area so tapping chip does not toggle balance
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(top = 4.dp),
+            ) {
+                listOf("sats", "BTC").forEach { unit ->
+                    FilterChip(
+                        selected = state.balanceUnit == unit,
+                        onClick = {
+                            scope.launch {
+                                container.settingsRepository.update { it.copy(balanceUnit = unit) }
                             }
-                            val result = SensitiveRevealController(gate).toggle(
-                                currentlyVisible = showBalance,
-                                requireBiometric = requireBiometric,
-                                request = BiometricPromptRequest(
-                                    title = "Reveal total balance",
-                                    subtitle = "BTC Track privacy protection",
-                                    description = "Authenticate to reveal cached balance totals",
-                                ),
-                            )
-                            showBalance = result.visible
-                            revealStatus = result.message
-                        }
-                    },
-                    modifier = Modifier.weight(1f),
-                ) {
-                    Text(if (showBalance) "Hide balance" else "Reveal balance")
+                        },
+                        label = { Text(unit, style = MaterialTheme.typography.labelSmall) },
+                    )
                 }
             }
 
+            Spacer(Modifier.weight(3f))
+
+            // Stats — uppercase labels, right-aligned values
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 32.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp),
+            ) {
+                StatRow("ADDRESSES", "${state.trackedCount}")
+                StatRow("LAST REFRESH", state.lastRefreshLabel)
+            }
         }
     }
 }
 
 @Composable
-private fun DashboardSummaryCard(
-    state: DashboardUiState,
-    isRefreshing: Boolean,
-    revealStatus: String,
-) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text("Dashboard", style = MaterialTheme.typography.titleLarge)
-            Spacer(modifier = Modifier.height(8.dp))
-            Text("Tor status: ${state.torStatus}")
-            Text("Tracked addresses: ${state.trackedCount}")
-            Text("Last refresh: ${state.lastRefreshLabel}")
-            Text(
-                if (state.showBalance) "Total balance: ${state.totalBalanceSats} sats"
-                else "Total balance: hidden"
-            )
-            Text("Reveal status: $revealStatus")
-            if (isRefreshing) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Refreshing cached balances...")
-            }
-        }
+private fun StatRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            label,
+            style = SectionLabelStyle,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            value,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+        )
     }
 }
