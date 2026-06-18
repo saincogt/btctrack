@@ -11,6 +11,7 @@ data class DashboardUiState(
     val lastRefreshLabel: String = "Not available",
     val totalBalanceSats: Long = 0,
     val showBalance: Boolean = false,
+    val balanceUnit: String = "sats",
 )
 
 data class ImportUiState(
@@ -54,13 +55,25 @@ fun buildDashboardState(
     balances: List<BalanceSnapshot>,
     torStatus: String,
     showBalance: Boolean,
+    balanceUnit: String = "sats",
+    excludedGroups: Set<String> = emptySet(),
 ): DashboardUiState {
     val lastRefreshAt = balances.maxOfOrNull { it.fetchedAt }
+    val includedAddressSet = addresses
+        .filter { entry ->
+            excludedGroups.none { p -> entry.groupPath == p || entry.groupPath.startsWith("$p/") }
+        }
+        .map { it.address }
+        .toSet()
+    val totalSats = balances
+        .filter { it.success && it.address in includedAddressSet }
+        .sumOf { it.confirmedSats }
     return DashboardUiState(
         torStatus = torStatus,
         trackedCount = addresses.size,
         lastRefreshLabel = lastRefreshAt?.let { formatRelativeTime(it) } ?: "Never",
-        totalBalanceSats = balances.filter { it.success }.sumOf { it.confirmedSats + it.unconfirmedSats },
+        totalBalanceSats = totalSats,
         showBalance = showBalance,
+        balanceUnit = balanceUnit,
     )
 }
