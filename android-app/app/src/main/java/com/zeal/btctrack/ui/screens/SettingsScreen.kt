@@ -91,6 +91,28 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
+                Text("Theme", style = MaterialTheme.typography.bodyMedium)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("light" to "Light", "system" to "System", "dark" to "Dark").forEach { (value, label) ->
+                        FilterChip(
+                            selected = (settings?.themeMode ?: "system") == value,
+                            onClick = {
+                                scope.launch {
+                                    container.settingsRepository.update { it.copy(themeMode = value) }
+                                }
+                            },
+                            label = { Text(label) },
+                        )
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text("Balance unit", style = MaterialTheme.typography.bodyMedium)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("sats", "BTC").forEach { unit ->

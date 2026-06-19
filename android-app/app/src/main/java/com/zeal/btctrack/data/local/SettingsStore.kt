@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import com.zeal.btctrack.domain.model.AppSettings
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -37,6 +38,8 @@ class SettingsStore(
             jitterMaxMs = prefs[JITTER_MAX_MS] ?: 2_000L,
             esploraBaseUrl = prefs[ESPLORA_BASE_URL] ?: "http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/api/",
             balanceUnit = prefs[BALANCE_UNIT] ?: "sats",
+            excludedGroups = prefs[EXCLUDED_GROUPS] ?: emptySet(),
+            themeMode = prefs[THEME_MODE] ?: "system",
         )
     }
 
@@ -55,6 +58,8 @@ class SettingsStore(
                     jitterMaxMs = prefs[JITTER_MAX_MS] ?: 2_000L,
                     esploraBaseUrl = prefs[ESPLORA_BASE_URL] ?: "http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/api/",
                     balanceUnit = prefs[BALANCE_UNIT] ?: "sats",
+                    excludedGroups = prefs[EXCLUDED_GROUPS] ?: emptySet(),
+                    themeMode = prefs[THEME_MODE] ?: "system",
                 )
             )
 
@@ -69,6 +74,8 @@ class SettingsStore(
             prefs[JITTER_MAX_MS] = updated.jitterMaxMs
             prefs[ESPLORA_BASE_URL] = updated.esploraBaseUrl
             prefs[BALANCE_UNIT] = updated.balanceUnit
+            prefs[EXCLUDED_GROUPS] = updated.excludedGroups
+            prefs[THEME_MODE] = updated.themeMode
         }
     }
 
@@ -86,5 +93,7 @@ class SettingsStore(
         private val JITTER_MAX_MS = longPreferencesKey("jitter_max_ms")
         private val ESPLORA_BASE_URL = stringPreferencesKey("esplora_base_url")
         private val BALANCE_UNIT = stringPreferencesKey("balance_unit")
+        private val EXCLUDED_GROUPS = stringSetPreferencesKey("excluded_groups")
+        private val THEME_MODE = stringPreferencesKey("theme_mode")
     }
 }

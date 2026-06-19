@@ -5,20 +5,48 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-
-private val DarkColors = darkColorScheme(
-    primary = BitcoinOrange,
-    background = BackgroundDark,
-    surface = SurfaceDark,
-    surfaceVariant = SurfaceVariantDark,
-    onPrimary = BackgroundDark,
-    onBackground = TextPrimary,
-    onSurface = TextPrimary,
-    onSurfaceVariant = TextSecondary,
-)
+import androidx.compose.ui.graphics.Color
 
 private val LightColors = lightColorScheme(
-    primary = BitcoinOrange,
+    primary = DesignCoral,
+    onPrimary = Color.White,
+    primaryContainer = DesignCoralDisabled,
+    onPrimaryContainer = DesignCoralActive,
+    secondary = DesignAccentTeal,
+    onSecondary = Color.White,
+    background = DesignCanvas,
+    onBackground = DesignInk,
+    surface = DesignCanvas,
+    onSurface = DesignInk,
+    surfaceVariant = DesignSurfaceCard,
+    onSurfaceVariant = DesignMuted,
+    outline = DesignHairline,
+    outlineVariant = DesignHairlineSoft,
+    error = DesignError,
+    onError = Color.White,
+    errorContainer = Color(0xFFFDE8E8),
+    onErrorContainer = DesignError,
+)
+
+private val DarkColors = darkColorScheme(
+    primary = DesignCoral,
+    onPrimary = Color.White,
+    primaryContainer = DesignCoralActive,
+    onPrimaryContainer = DesignCoralDisabled,
+    secondary = DesignAccentTeal,
+    onSecondary = DesignSurfaceDark,
+    background = DesignSurfaceDark,
+    onBackground = DesignOnDark,
+    surface = DesignSurfaceDarkElevated,
+    onSurface = DesignOnDark,
+    surfaceVariant = DesignSurfaceDarkSoft,
+    onSurfaceVariant = DesignOnDarkSoft,
+    outline = DesignSurfaceDarkElevated,
+    outlineVariant = DesignSurfaceDarkSoft,
+    error = DesignError,
+    onError = Color.White,
+    errorContainer = Color(0xFF4A1010),
+    onErrorContainer = Color(0xFFFFB4AB),
 )
 
 @Composable

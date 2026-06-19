@@ -15,4 +15,6 @@ data class AppSettings(
     val jitterMaxMs: Long = 2_000,
     val esploraBaseUrl: String = "http://mempoolhqx4isw62xs7abwphsq7ldayuidyx2v2oethdhhj6mlo2r6ad.onion/api/",
     val balanceUnit: String = "sats",
+    val excludedGroups: Set<String> = emptySet(),
+    val themeMode: String = "system",
 )
