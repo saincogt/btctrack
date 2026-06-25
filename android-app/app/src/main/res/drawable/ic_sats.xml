@@ -3,24 +3,30 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-    <!-- top stub -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M10.5,2.5 h3 v4 h-3 Z"/>
-    <!-- top bar — shifted left, upper arc of S -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M4.5,7.5 h13 v3 h-13 Z"/>
-    <!-- middle bar — centered -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M5,11.5 h14 v3 h-14 Z"/>
-    <!-- bottom bar — shifted right, lower arc of S -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M6.5,15.5 h13 v3 h-13 Z"/>
-    <!-- bottom stub -->
-    <path
-        android:fillColor="#FF000000"
-        android:pathData="M10.5,19.5 h3 v2.5 h-3 Z"/>
+    <!-- entire symbol is a tilted $ variant: rotate 12 degrees CW as a group -->
+    <group
+        android:rotation="12"
+        android:pivotX="12"
+        android:pivotY="12">
+        <!-- top stub (vertical center line, above bars) -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M10.5,2.5 h3 v4 h-3 Z"/>
+        <!-- top bar -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M5,7.5 h14 v2.5 h-14 Z"/>
+        <!-- middle bar -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M5,11 h14 v2.5 h-14 Z"/>
+        <!-- bottom bar -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M5,14.5 h14 v2.5 h-14 Z"/>
+        <!-- bottom stub (vertical center line, below bars) -->
+        <path
+            android:fillColor="#FF000000"
+            android:pathData="M10.5,18.5 h3 v3 h-3 Z"/>
+    </group>
 </vector>

@@ -2,13 +2,11 @@ package com.zeal.btctrack.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -91,6 +89,16 @@ fun DashboardScreen(container: AppContainer) {
             TopAppBar(
                 title = { Text("BTC Track", fontWeight = FontWeight.SemiBold) },
                 actions = {
+                    // 1st: eye toggle
+                    IconButton(onClick = { showBalance = !showBalance }) {
+                        Icon(
+                            imageVector = if (showBalance) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                            contentDescription = if (showBalance) "Hide balance" else "Show balance",
+                            tint = if (showBalance) MaterialTheme.colorScheme.onSurface
+                                   else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                        )
+                    }
+                    // 2nd: tor indicator
                     Icon(
                         painter = painterResource(R.drawable.ic_tor_onion),
                         contentDescription = if (torReachable) "Tor online" else "Tor offline",
@@ -100,6 +108,7 @@ fun DashboardScreen(container: AppContainer) {
                             .size(22.dp)
                             .alpha(if (torReachable) 1f else 0.25f),
                     )
+                    // 3rd: refresh
                     IconButton(
                         onClick = {
                             scope.launch {
@@ -184,65 +193,54 @@ private fun BalanceCard(
         amountText.length > 10 -> 32.sp
         else -> 38.sp
     }
+    val iconSize = when {
+        amountText.length > 18 -> 14.dp
+        amountText.length > 14 -> 18.dp
+        amountText.length > 10 -> 22.dp
+        else -> 26.dp
+    }
 
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Column(
+    if (showBalance) {
+        Row(
             modifier = Modifier
-                .align(Alignment.Center)
+                .clickable(onClick = onToggleUnit)
                 .padding(vertical = 12.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            if (showBalance) {
-                Column(
-                    modifier = Modifier.clickable(onClick = onToggleUnit),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Text(
-                        text = amountText,
-                        style = MonoDisplayStyle.copy(fontSize = fontSize),
-                        color = BitcoinOrange,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip,
-                    )
-                    Spacer(Modifier.height(6.dp))
-                    if (balanceUnit == "BTC") {
-                        Text(
-                            text = "₿",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    } else {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_sats),
-                            contentDescription = "sats",
-                            modifier = Modifier.size(18.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            } else {
+            if (balanceUnit == "BTC") {
                 Text(
-                    text = "• • •",
-                    style = MonoDisplayStyle,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center,
-                    letterSpacing = 8.sp,
-                    modifier = Modifier.clickable(onClick = onToggleVisibility),
+                    text = "₿",
+                    style = MonoDisplayStyle.copy(fontSize = fontSize),
+                    color = BitcoinOrange,
+                )
+            } else {
+                Icon(
+                    painter = painterResource(R.drawable.ic_sats),
+                    contentDescription = "sats",
+                    modifier = Modifier.size(iconSize),
+                    tint = BitcoinOrange,
                 )
             }
-        }
-
-        IconButton(
-            onClick = onToggleVisibility,
-            modifier = Modifier.align(Alignment.CenterEnd),
-        ) {
-            Icon(
-                imageVector = if (showBalance) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                contentDescription = if (showBalance) "Hide balance" else "Show balance",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            Text(
+                text = amountText,
+                style = MonoDisplayStyle.copy(fontSize = fontSize),
+                color = BitcoinOrange,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         }
+    } else {
+        Text(
+            text = "• • •",
+            style = MonoDisplayStyle,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+            letterSpacing = 8.sp,
+            modifier = Modifier
+                .clickable(onClick = onToggleVisibility)
+                .padding(vertical = 12.dp),
+        )
     }
 }
 
