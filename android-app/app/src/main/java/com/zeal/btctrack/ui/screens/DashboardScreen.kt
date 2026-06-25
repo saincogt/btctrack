@@ -209,28 +209,25 @@ private fun BalanceCard(
             .padding(vertical = 16.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            val unitAlpha = if (showBalance) 1f else 0.35f
-
-            if (balanceUnit == "BTC") {
-                Text(
-                    text = "₿",
-                    style = MonoDisplayStyle.copy(fontSize = fontSize),
-                    color = BitcoinOrange.copy(alpha = unitAlpha),
-                )
-            } else {
-                Icon(
-                    painter = painterResource(R.drawable.ic_sats),
-                    contentDescription = "sats",
-                    modifier = Modifier.size(iconSize),
-                    tint = BitcoinOrange.copy(alpha = unitAlpha),
-                )
-            }
-
-            if (showBalance) {
+        if (showBalance) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (balanceUnit == "BTC") {
+                    Text(
+                        text = "₿",
+                        style = MonoDisplayStyle.copy(fontSize = fontSize),
+                        color = BitcoinOrange,
+                    )
+                } else {
+                    Icon(
+                        painter = painterResource(R.drawable.ic_sats),
+                        contentDescription = "sats",
+                        modifier = Modifier.size(iconSize),
+                        tint = BitcoinOrange,
+                    )
+                }
                 Text(
                     text = amountText,
                     style = MonoDisplayStyle.copy(fontSize = fontSize),
@@ -238,14 +235,14 @@ private fun BalanceCard(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-            } else {
-                Text(
-                    text = "∗∗∗∗∗∗∗∗",
-                    style = MonoDisplayStyle.copy(fontSize = fontSize, letterSpacing = 3.sp),
-                    color = BitcoinOrange.copy(alpha = 0.35f),
-                    maxLines = 1,
-                )
             }
+        } else {
+            Text(
+                text = "∗∗∗∗∗∗∗∗",
+                style = MonoDisplayStyle.copy(fontSize = 38.sp, letterSpacing = 3.sp),
+                color = BitcoinOrange.copy(alpha = 0.35f),
+                maxLines = 1,
+            )
         }
     }
 }
