@@ -2,6 +2,7 @@ package com.zeal.btctrack.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -34,7 +35,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -200,47 +200,53 @@ private fun BalanceCard(
         else -> 26.dp
     }
 
-    if (showBalance) {
+    // Full-width tap area so the ripple always has stable, fixed bounds regardless
+    // of how the balance text width changes between units or show/hide states.
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = if (showBalance) onToggleUnit else onToggleVisibility)
+            .padding(vertical = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
         Row(
-            modifier = Modifier
-                .clickable(onClick = onToggleUnit)
-                .padding(vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
+            val unitAlpha = if (showBalance) 1f else 0.35f
+
             if (balanceUnit == "BTC") {
                 Text(
                     text = "₿",
                     style = MonoDisplayStyle.copy(fontSize = fontSize),
-                    color = BitcoinOrange,
+                    color = BitcoinOrange.copy(alpha = unitAlpha),
                 )
             } else {
                 Icon(
                     painter = painterResource(R.drawable.ic_sats),
                     contentDescription = "sats",
                     modifier = Modifier.size(iconSize),
-                    tint = BitcoinOrange,
+                    tint = BitcoinOrange.copy(alpha = unitAlpha),
                 )
             }
-            Text(
-                text = amountText,
-                style = MonoDisplayStyle.copy(fontSize = fontSize),
-                color = BitcoinOrange,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+
+            if (showBalance) {
+                Text(
+                    text = amountText,
+                    style = MonoDisplayStyle.copy(fontSize = fontSize),
+                    color = BitcoinOrange,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            } else {
+                Text(
+                    text = "∗∗∗∗∗∗∗∗",
+                    style = MonoDisplayStyle.copy(fontSize = fontSize, letterSpacing = 3.sp),
+                    color = BitcoinOrange.copy(alpha = 0.35f),
+                    maxLines = 1,
+                )
+            }
         }
-    } else {
-        Text(
-            text = "• • •",
-            style = MonoDisplayStyle,
-            color = MaterialTheme.colorScheme.onBackground,
-            textAlign = TextAlign.Center,
-            letterSpacing = 8.sp,
-            modifier = Modifier
-                .clickable(onClick = onToggleVisibility)
-                .padding(vertical = 12.dp),
-        )
     }
 }
 
