@@ -4,14 +4,30 @@ import java.text.NumberFormat
 import java.util.Locale
 
 fun formatBalance(sats: Long, unit: String): String {
-    val nf = NumberFormat.getNumberInstance(Locale.getDefault())
     return when (unit) {
         "BTC" -> {
-            val btc = sats / 100_000_000.0
-            "%.8f BTC".format(btc)
+            val nf = NumberFormat.getNumberInstance(Locale.US).apply {
+                minimumFractionDigits = 2
+                maximumFractionDigits = 8
+            }
+            "${nf.format(sats / 100_000_000.0)} BTC"
         }
-        else -> "${nf.format(sats)} sats"
+        else -> {
+            val nf = NumberFormat.getNumberInstance(Locale.getDefault())
+            "${nf.format(sats)} sats"
+        }
     }
+}
+
+fun formatBalanceAmount(sats: Long, unit: String): String = when (unit) {
+    "BTC" -> {
+        val nf = NumberFormat.getNumberInstance(Locale.US).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 8
+        }
+        nf.format(sats / 100_000_000.0)
+    }
+    else -> NumberFormat.getNumberInstance(Locale.getDefault()).format(sats)
 }
 
 fun formatRelativeTime(timestampMs: Long): String {

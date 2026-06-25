@@ -2,18 +2,21 @@ package com.zeal.btctrack.ui.screens
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +44,7 @@ import com.zeal.btctrack.AppContainer
 import com.zeal.btctrack.R
 import com.zeal.btctrack.ui.buildDashboardState
 import com.zeal.btctrack.ui.collectAsStateCompat
-import com.zeal.btctrack.ui.formatBalance
+import com.zeal.btctrack.ui.formatBalanceAmount
 import com.zeal.btctrack.ui.theme.BitcoinOrange
 import com.zeal.btctrack.ui.theme.MonoDisplayStyle
 import com.zeal.btctrack.ui.theme.SectionLabelStyle
@@ -136,70 +139,109 @@ fun DashboardScreen(container: AppContainer) {
         ) {
             Spacer(Modifier.weight(2f))
 
-            // Tap-to-toggle balance area
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showBalance = !showBalance }
-                    .padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                if (state.showBalance) {
-                    Text(
-                        text = formatBalance(state.totalBalanceSats, state.balanceUnit),
-                        style = MonoDisplayStyle,
-                        color = BitcoinOrange,
-                        textAlign = TextAlign.Center,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                } else {
-                    Text(
-                        text = "• • •",
-                        style = MonoDisplayStyle,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        textAlign = TextAlign.Center,
-                        letterSpacing = 8.sp,
-                    )
-                }
-                Text(
-                    text = if (state.showBalance) "Tap to hide" else "Tap to reveal",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    textAlign = TextAlign.Center,
-                )
-            }
-
-            // Unit chips — outside tap area so tapping chip does not toggle balance
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.padding(top = 4.dp),
-            ) {
-                listOf("sats", "BTC").forEach { unit ->
-                    FilterChip(
-                        selected = state.balanceUnit == unit,
-                        onClick = {
-                            scope.launch {
-                                container.settingsRepository.update { it.copy(balanceUnit = unit) }
-                            }
-                        },
-                        label = { Text(unit, style = MaterialTheme.typography.labelSmall) },
-                    )
-                }
-            }
+            BalanceCard(
+                totalSats = state.totalBalanceSats,
+                balanceUnit = state.balanceUnit,
+                showBalance = showBalance,
+                onToggleVisibility = { showBalance = !showBalance },
+                onToggleUnit = {
+                    scope.launch {
+                        val next = if ((settings?.balanceUnit ?: "sats") == "sats") "BTC" else "sats"
+                        container.settingsRepository.update { it.copy(balanceUnit = next) }
+                    }
+                },
+            )
 
             Spacer(Modifier.weight(3f))
 
-            // Stats — uppercase labels, right-aligned values
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 StatRow("ADDRESSES", "${state.trackedCount}")
                 StatRow("LAST REFRESH", state.lastRefreshLabel)
             }
+        }
+    }
+}
+
+@Composable
+private fun BalanceCard(
+    totalSats: Long,
+    balanceUnit: String,
+    showBalance: Boolean,
+    onToggleVisibility: () -> Unit,
+    onToggleUnit: () -> Unit,
+) {
+    val amountText = remember(totalSats, balanceUnit) {
+        formatBalanceAmount(totalSats, balanceUnit)
+    }
+    val fontSize = when {
+        amountText.length > 18 -> 20.sp
+        amountText.length > 14 -> 26.sp
+        amountText.length > 10 -> 32.sp
+        else -> 38.sp
+    }
+
+    Box(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .padding(vertical = 12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (showBalance) {
+                Column(
+                    modifier = Modifier.clickable(onClick = onToggleUnit),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        text = amountText,
+                        style = MonoDisplayStyle.copy(fontSize = fontSize),
+                        color = BitcoinOrange,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip,
+                    )
+                    Spacer(Modifier.height(6.dp))
+                    if (balanceUnit == "BTC") {
+                        Text(
+                            text = "₿",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    } else {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_sats),
+                            contentDescription = "sats",
+                            modifier = Modifier.size(18.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = "• • •",
+                    style = MonoDisplayStyle,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                    letterSpacing = 8.sp,
+                    modifier = Modifier.clickable(onClick = onToggleVisibility),
+                )
+            }
+        }
+
+        IconButton(
+            onClick = onToggleVisibility,
+            modifier = Modifier.align(Alignment.CenterEnd),
+        ) {
+            Icon(
+                imageVector = if (showBalance) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                contentDescription = if (showBalance) "Hide balance" else "Show balance",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
