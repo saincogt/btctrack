@@ -31,10 +31,14 @@ class RefreshTrackedAddressesUseCase(
         val ordered = refreshOrderStrategy.reorder(addresses)
         // Pre-first-request jitter so the refresh burst start time is unpredictable
         delayStrategy.sleep(jitterPlanner.nextDelayMs(settings.jitterMinMs, settings.jitterMaxMs))
-        val snapshots = ordered.map { entry ->
-            val snapshot = refreshAddressBalance(entry.address)
-            delayStrategy.sleep(jitterPlanner.nextDelayMs(settings.jitterMinMs, settings.jitterMaxMs))
-            snapshot
+        val snapshots = ordered.mapNotNull { entry ->
+            try {
+                val snapshot = refreshAddressBalance(entry.address)
+                delayStrategy.sleep(jitterPlanner.nextDelayMs(settings.jitterMinMs, settings.jitterMaxMs))
+                snapshot
+            } catch (_: Exception) {
+                null
+            }
         }
 
         balanceRepository?.upsertAll(snapshots.filter { it.success })

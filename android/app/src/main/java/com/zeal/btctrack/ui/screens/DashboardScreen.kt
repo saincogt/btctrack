@@ -31,11 +31,18 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.biometric.BiometricManager
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import com.zeal.btctrack.ui.security.AndroidBiometricGate
+import com.zeal.btctrack.ui.security.BiometricGate
+import com.zeal.btctrack.ui.security.BiometricPromptRequest
+import com.zeal.btctrack.ui.security.SensitiveRevealController
+import com.zeal.btctrack.ui.security.findFragmentActivity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,15 +60,43 @@ import kotlinx.coroutines.launch
 @Composable
 fun DashboardScreen(container: AppContainer) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val addresses by container.addressRepository.observeAll().collectAsStateCompat(emptyList())
     val balances by container.balanceRepository.observeAll().collectAsStateCompat(emptyList())
     val settings by container.settingsRepository.observe().collectAsStateCompat(null)
     val torReachable by container.torReachable.collectAsStateCompat(false)
 
+    val biometricGate: BiometricGate? = remember(context) {
+        context.findFragmentActivity()?.let(::AndroidBiometricGate)
+    }
+    val biometricAvailable = remember(context) {
+        BiometricManager.from(context).canAuthenticate(
+            BiometricManager.Authenticators.BIOMETRIC_STRONG or
+                BiometricManager.Authenticators.DEVICE_CREDENTIAL,
+        ) == BiometricManager.BIOMETRIC_SUCCESS
+    }
+
     var torStatus by remember { mutableStateOf("") }
     var showBalance by remember { mutableStateOf(false) }
     var balanceInitialized by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
+
+    val onToggleVisibility: () -> Unit = {
+        scope.launch {
+            val requireBiometric = biometricAvailable && (settings?.requireBiometricForReveal ?: true)
+            val gate = biometricGate ?: SensitiveRevealController.noOpGate()
+            val result = SensitiveRevealController(gate).toggle(
+                currentlyVisible = showBalance,
+                requireBiometric = requireBiometric,
+                request = BiometricPromptRequest(
+                    title = "Reveal balance",
+                    subtitle = "",
+                    description = "",
+                ),
+            )
+            showBalance = result.visible
+        }
+    }
 
     LaunchedEffect(Unit) {
         torStatus = container.torHealthStatus()
@@ -91,7 +126,7 @@ fun DashboardScreen(container: AppContainer) {
                 title = { Text("BTC Track", fontWeight = FontWeight.SemiBold) },
                 actions = {
                     // 1st: eye toggle
-                    IconButton(onClick = { showBalance = !showBalance }) {
+                    IconButton(onClick = onToggleVisibility) {
                         Icon(
                             imageVector = if (showBalance) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                             contentDescription = if (showBalance) "Hide balance" else "Show balance",
@@ -153,7 +188,7 @@ fun DashboardScreen(container: AppContainer) {
                 totalSats = state.totalBalanceSats,
                 balanceUnit = state.balanceUnit,
                 showBalance = showBalance,
-                onToggleVisibility = { showBalance = !showBalance },
+                onToggleVisibility = onToggleVisibility,
                 onToggleUnit = {
                     scope.launch {
                         val next = if ((settings?.balanceUnit ?: "sats") == "sats") "BTC" else "sats"
