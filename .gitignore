@@ -1,6 +1,6 @@
 # Address data — never commit these
-addresses.json
-plugins/.btcaddresses.json
+cli/addresses.json
+swiftbar/.btcaddresses.json
 
 # Python
 __pycache__/

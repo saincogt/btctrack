@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Converted from the official Tor Browser SVG (CC BY-SA 4.0, Tor Project).
+    Source: https://upload.wikimedia.org/wikipedia/commons/c/c9/Tor_Browser_icon.svg
+    Changes from original:
+    - Drop shadow filter removed (not supported in AVD)
+    - linearGradient converted to aapt:attr gradient
+    - <use xlink:href> expanded inline, transform applied to path-2 coordinates
+    - <circle> background converted to path
+
+    Transform for the "half" group: translate(140.5,259) scale(-1,1) translate(-140.5,-259)
+    Simplifies to: x' = 281 - x, y' = y
+    Applied to path-2: M25,29 C152.577777,29 256,131.974508 256,259 ...
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+
+    <!-- Background circle -->
+    <path
+        android:fillColor="#F2E4FF"
+        android:pathData="M 10,256 A 246,246 0 1,0 502,256 A 246,246 0 1,0 10,256 Z"/>
+
+    <!-- Center rings: right-side ring pattern + full circle fill (evenOdd).
+         Left half becomes solid; right half shows concentric ring gaps. -->
+    <path
+        android:fillType="evenOdd"
+        android:pathData="M256.525143,465.439707 L256.525143,434.406609 C354.826191,434.122748 434.420802,354.364917 434.420802,255.992903 C434.420802,157.627987 354.826191,77.8701558 256.525143,77.5862948 L256.525143,46.5531962 C371.964296,46.8441537 465.446804,140.489882 465.446804,255.992903 C465.446804,371.503022 371.964296,465.155846 256.525143,465.439707 Z M256.525143,356.820314 C311.970283,356.529356 356.8487,311.516106 356.8487,255.992903 C356.8487,200.476798 311.970283,155.463547 256.525143,155.17259 L256.525143,124.146588 C329.115485,124.430449 387.881799,183.338693 387.881799,255.992903 C387.881799,328.654211 329.115485,387.562455 256.525143,387.846316 L256.525143,356.820314 Z M256.525143,201.718689 C286.266674,202.00255 310.3026,226.180407 310.3026,255.992903 C310.3026,285.812497 286.266674,309.990353 256.525143,310.274214 L256.525143,201.718689 Z M0,255.992903 C0,397.384044 114.60886,512 256,512 C397.384044,512 512,397.384044 512,255.992903 C512,114.60886 397.384044,0 256,0 C114.60886,0 0,114.60886 0,255.992903 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="256" android:startY="512"
+                android:endX="256" android:endY="0"
+                android:type="linear">
+                <item android:offset="0" android:color="#FF420C5D"/>
+                <item android:offset="1" android:color="#FF951AD1"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!-- Left-half overlay: path-2 with x'=281-x transform applied inline.
+         Covers left hemisphere with solid gradient, hiding ring gaps on that side. -->
+    <path
+        android:pathData="M256,29 C128.422223,29 25,131.974508 25,259 C25,386.025492 128.422223,489 256,489 L256,29 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="256" android:startY="512"
+                android:endX="256" android:endY="0"
+                android:type="linear">
+                <item android:offset="0" android:color="#FF420C5D"/>
+                <item android:offset="1" android:color="#FF951AD1"/>
+            </gradient>
+        </aapt:attr>
+    </path>
+
+</vector>
