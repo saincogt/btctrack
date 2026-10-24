@@ -34,7 +34,6 @@ class SettingsStore(
             socksPort = prefs[SOCKS_PORT] ?: 9050,
             refreshIntervalMinutes = prefs[REFRESH_INTERVAL_MINUTES] ?: 60,
             showTotalBalance = prefs[SHOW_TOTAL_BALANCE] ?: true,
-            requireBiometricForDetails = prefs[REQUIRE_BIOMETRIC_FOR_DETAILS] ?: true,
             requireBiometricForReveal = prefs[REQUIRE_BIOMETRIC_FOR_REVEAL] ?: true,
             jitterMinMs = prefs[JITTER_MIN_MS] ?: 500L,
             jitterMaxMs = prefs[JITTER_MAX_MS] ?: 2_000L,
@@ -57,7 +56,6 @@ class SettingsStore(
                     socksPort = prefs[SOCKS_PORT] ?: 9050,
                     refreshIntervalMinutes = prefs[REFRESH_INTERVAL_MINUTES] ?: 60,
                     showTotalBalance = prefs[SHOW_TOTAL_BALANCE] ?: true,
-                    requireBiometricForDetails = prefs[REQUIRE_BIOMETRIC_FOR_DETAILS] ?: true,
                     requireBiometricForReveal = prefs[REQUIRE_BIOMETRIC_FOR_REVEAL] ?: true,
                     jitterMinMs = prefs[JITTER_MIN_MS] ?: 500L,
                     jitterMaxMs = prefs[JITTER_MAX_MS] ?: 2_000L,
@@ -76,7 +74,6 @@ class SettingsStore(
             prefs[SOCKS_PORT] = updated.socksPort
             prefs[REFRESH_INTERVAL_MINUTES] = updated.refreshIntervalMinutes
             prefs[SHOW_TOTAL_BALANCE] = updated.showTotalBalance
-            prefs[REQUIRE_BIOMETRIC_FOR_DETAILS] = updated.requireBiometricForDetails
             prefs[REQUIRE_BIOMETRIC_FOR_REVEAL] = updated.requireBiometricForReveal
             prefs[JITTER_MIN_MS] = updated.jitterMinMs
             prefs[JITTER_MAX_MS] = updated.jitterMaxMs
@@ -96,7 +93,6 @@ class SettingsStore(
         private val SOCKS_PORT = intPreferencesKey("socks_port")
         private val REFRESH_INTERVAL_MINUTES = intPreferencesKey("refresh_interval_minutes")
         private val SHOW_TOTAL_BALANCE = booleanPreferencesKey("show_total_balance")
-        private val REQUIRE_BIOMETRIC_FOR_DETAILS = booleanPreferencesKey("require_biometric_for_details")
         private val REQUIRE_BIOMETRIC_FOR_REVEAL = booleanPreferencesKey("require_biometric_for_reveal")
         private val JITTER_MIN_MS = longPreferencesKey("jitter_min_ms")
         private val JITTER_MAX_MS = longPreferencesKey("jitter_max_ms")

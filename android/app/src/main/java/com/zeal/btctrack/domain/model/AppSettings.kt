@@ -9,7 +9,6 @@ data class AppSettings(
     val socksPort: Int = 9050,
     val refreshIntervalMinutes: Int = 60,
     val showTotalBalance: Boolean = true,
-    val requireBiometricForDetails: Boolean = true,
     val requireBiometricForReveal: Boolean = true,
     val jitterMinMs: Long = 500,
     val jitterMaxMs: Long = 2_000,
