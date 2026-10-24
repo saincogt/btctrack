@@ -457,16 +457,17 @@ fun GroupedAddressesScreen(
                                             menuAddress = null
                                             val found = addresses.find { it.address == entry.address }
                                             if (found != null) {
+                                                // Delete right away so leaving the screen cannot lose it; Undo re-adds the entry
                                                 scope.launch {
+                                                    container.addressRepository.delete(found.address)
                                                     val result = snackbarHostState.showSnackbar(
                                                         message = "Deleted ${found.label.ifBlank { entry.address.redactedAddress() }}",
                                                         actionLabel = "Undo",
                                                         duration = SnackbarDuration.Long,
                                                     )
-                                                    if (result != SnackbarResult.ActionPerformed) {
-                                                        container.addressRepository.delete(found.address)
-                                                    } else {
-                                                        scope.launch { snackbarHostState.showSnackbar("Undo successful") }
+                                                    if (result == SnackbarResult.ActionPerformed) {
+                                                        container.addressRepository.add(found)
+                                                        snackbarHostState.showSnackbar("Undo successful")
                                                     }
                                                 }
                                             } else {
