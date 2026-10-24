@@ -41,19 +41,20 @@ class RefreshTrackedAddressesUseCase(
             } catch (_: Exception) {
                 null
             }
-            if (snapshot != null) {
-                delayStrategy.sleep(jitterPlanner.nextDelayMs(settings.jitterMinMs, settings.jitterMaxMs))
-            }
+            // Jitter after failures too, so requests never go out back-to-back over Tor
+            delayStrategy.sleep(jitterPlanner.nextDelayMs(settings.jitterMinMs, settings.jitterMaxMs))
             snapshot
         }
 
         balanceRepository?.upsertAll(snapshots.filter { it.success })
-        return RefreshBatchResult(snapshots)
+        return RefreshBatchResult(snapshots, attemptedCount = ordered.size)
     }
 }
 
 data class RefreshBatchResult(
     val snapshots: List<BalanceSnapshot>,
+    val attemptedCount: Int = snapshots.size,
 ) {
-    val refreshedCount: Int get() = snapshots.size
+    val refreshedCount: Int get() = snapshots.count { it.success }
+    val allFailed: Boolean get() = attemptedCount > 0 && refreshedCount == 0
 }

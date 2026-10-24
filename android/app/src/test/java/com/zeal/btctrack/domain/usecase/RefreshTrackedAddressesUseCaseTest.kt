@@ -82,6 +82,7 @@ class RefreshTrackedAddressesUseCaseTest {
 
     @Test
     fun `skips an address whose refresh fails and keeps the rest`() = runBlocking {
+        val delayStrategy = RecordingDelayStrategy()
         val useCase = RefreshTrackedAddressesUseCase(
             addressRepository = FakeAddressRepository(listOf(addressA, addressB)),
             settingsRepository = FakeSettingsRepository(AppSettings()),
@@ -90,12 +91,34 @@ class RefreshTrackedAddressesUseCaseTest {
             },
             refreshOrderStrategy = FixedOrderStrategy(listOf(addressA, addressB)),
             jitterPlanner = FixedJitterPlanner(listOf(5L, 10L, 20L)),
-            delayStrategy = RecordingDelayStrategy(),
+            delayStrategy = delayStrategy,
         )
 
         val result = useCase()
 
         assertEquals(listOf("bc1q-b"), result.snapshots.map { it.address })
+        // Jitter still follows the failed request so the next one is not sent back-to-back
+        assertEquals(listOf(5L, 10L, 20L), delayStrategy.recorded)
+        assertEquals(2, result.attemptedCount)
+        assertEquals(1, result.refreshedCount)
+        assertEquals(false, result.allFailed)
+    }
+
+    @Test
+    fun `counts only successful snapshots as refreshed`() = runBlocking {
+        val useCase = RefreshTrackedAddressesUseCase(
+            addressRepository = FakeAddressRepository(listOf(addressA, addressB)),
+            settingsRepository = FakeSettingsRepository(AppSettings()),
+            refreshAddressBalance = { address -> snapshot(address, 0L).copy(success = false, errorSummary = "down") },
+            refreshOrderStrategy = FixedOrderStrategy(listOf(addressA, addressB)),
+            jitterPlanner = FixedJitterPlanner(listOf(5L, 10L, 20L)),
+            delayStrategy = RecordingDelayStrategy(),
+        )
+
+        val result = useCase()
+
+        assertEquals(0, result.refreshedCount)
+        assertEquals(true, result.allFailed)
     }
 
     @Test
