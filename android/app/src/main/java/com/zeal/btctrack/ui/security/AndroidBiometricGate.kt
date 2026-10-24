@@ -27,37 +27,25 @@ class AndroidBiometricGate(
                 return@suspendCancellableCoroutine
             }
 
+            val outcome = BiometricOutcome(continuation)
             val prompt = BiometricPrompt(
                 activity,
                 ContextCompat.getMainExecutor(activity),
                 object : BiometricPrompt.AuthenticationCallback() {
                     override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                        continuation.resume(BiometricGateResult(success = true, message = "Authenticated"))
+                        outcome.succeeded()
                     }
 
                     override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                        if (continuation.isActive) {
-                            continuation.resume(
-                                BiometricGateResult(
-                                    success = false,
-                                    message = errString.toString(),
-                                )
-                            )
-                        }
+                        outcome.error(errString.toString())
                     }
 
                     override fun onAuthenticationFailed() {
-                        if (continuation.isActive) {
-                            continuation.resume(
-                                BiometricGateResult(
-                                    success = false,
-                                    message = "Authentication failed",
-                                )
-                            )
-                        }
+                        outcome.softFailure()
                     }
                 },
             )
+            continuation.invokeOnCancellation { prompt.cancelAuthentication() }
 
             prompt.authenticate(
                 BiometricPrompt.PromptInfo.Builder()

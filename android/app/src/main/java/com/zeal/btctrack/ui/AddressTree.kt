@@ -19,6 +19,12 @@ sealed class AddressTreeNode {
 
 data class FlatItem(val node: AddressTreeNode, val depth: Int)
 
+// Stable LazyColumn key. Leaves use the entry id because the same address can be stored twice.
+fun FlatItem.listKey(): String = when (node) {
+    is AddressTreeNode.Group -> "g:${node.path}"
+    is AddressTreeNode.Leaf -> "l:${node.entry.id}"
+}
+
 fun buildAddressTree(
     entries: List<AddressEntry>,
     balancesByAddress: Map<String, BalanceSnapshot>,

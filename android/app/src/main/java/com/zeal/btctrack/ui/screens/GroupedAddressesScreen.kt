@@ -70,6 +70,7 @@ import com.zeal.btctrack.ui.buildAddressTree
 import com.zeal.btctrack.ui.collectAsStateCompat
 import com.zeal.btctrack.ui.findSiblings
 import com.zeal.btctrack.ui.flattenVisible
+import com.zeal.btctrack.ui.listKey
 import com.zeal.btctrack.ui.moveGroupInOrder
 import com.zeal.btctrack.ui.formatBalanceAmount
 import com.zeal.btctrack.ui.formatRelativeTime
@@ -81,6 +82,7 @@ import com.zeal.btctrack.ui.security.SensitiveRevealController
 import com.zeal.btctrack.ui.security.findFragmentActivity
 import com.zeal.btctrack.ui.theme.MonoBodyStyle
 import com.zeal.btctrack.ui.theme.SectionLabelStyle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -174,12 +176,7 @@ fun GroupedAddressesScreen(
             ) {
                 items(
                     flatItems,
-                    key = { item ->
-                        when (val node = item.node) {
-                            is AddressTreeNode.Group -> "g:${node.path}"
-                            is AddressTreeNode.Leaf -> "l:${node.entry.address}"
-                        }
-                    },
+                    key = { item -> item.listKey() },
                 ) { flatItem ->
                     when (val node = flatItem.node) {
                         is AddressTreeNode.Group -> {
@@ -352,6 +349,10 @@ fun GroupedAddressesScreen(
                                                         refreshingAddresses[entry.address] = true
                                                         try {
                                                             container.refreshAddress(entry.address)
+                                                        } catch (e: CancellationException) {
+                                                            throw e
+                                                        } catch (e: Exception) {
+                                                            snackbarHostState.showSnackbar("Refresh failed: ${e.message ?: e::class.java.simpleName}")
                                                         } finally {
                                                             refreshingAddresses[entry.address] = false
                                                         }

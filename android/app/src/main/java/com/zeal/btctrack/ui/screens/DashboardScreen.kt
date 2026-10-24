@@ -54,6 +54,7 @@ import com.zeal.btctrack.ui.formatBalanceAmount
 import com.zeal.btctrack.ui.theme.BitcoinOrange
 import com.zeal.btctrack.ui.theme.MonoDisplayStyle
 import com.zeal.btctrack.ui.theme.SectionLabelStyle
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -149,9 +150,16 @@ fun DashboardScreen(container: AppContainer) {
                         onClick = {
                             scope.launch {
                                 isRefreshing = true
-                                container.refreshAllTrackedAddresses()
-                                torStatus = container.torHealthStatus()
-                                isRefreshing = false
+                                try {
+                                    container.refreshAllTrackedAddresses()
+                                    torStatus = container.torHealthStatus()
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    torStatus = "Refresh failed: ${e.message ?: e::class.java.simpleName}"
+                                } finally {
+                                    isRefreshing = false
+                                }
                             }
                         },
                         enabled = torReachable && !isRefreshing,

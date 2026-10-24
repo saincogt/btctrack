@@ -127,4 +127,14 @@ class AddressTreeTest {
         val flat = flattenVisible(tree, mapOf("A/B" to true, "A/B/C" to true))
         assertEquals(1, flat.size)
     }
+
+    @Test
+    fun `list keys stay unique when the same address is stored twice`() {
+        val entries = listOf(
+            entry("bc1-dup", "", "A").copy(id = "id-1"),
+            entry("bc1-dup", "", "B").copy(id = "id-2"),
+        )
+        val keys = flattenVisible(buildAddressTree(entries, emptyMap()), emptyMap()).map { item: FlatItem -> item.listKey() }
+        assertEquals(2, keys.toSet().size)
+    }
 }

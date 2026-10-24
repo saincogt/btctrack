@@ -65,7 +65,7 @@ class AppContainer(context: Context) {
 
     suspend fun torHealthStatus(): String {
         val settings = settingsRepository.observe().first()
-        val status = TorHealthChecker(baseUrl = settings.esploraBaseUrl, appSettings = settings).check()
+        val status = TorHealthChecker.checkSafely(baseUrl = settings.esploraBaseUrl, appSettings = settings)
         torReachable.value = status.ok
         return if (status.ok) {
             "Tor reachable via ${settings.socksHost}:${settings.socksPort}"

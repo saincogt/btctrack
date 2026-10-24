@@ -124,6 +124,10 @@ fun AddAddressScreen(
                         !AddressValidator.isValid(trimmed) -> error = "Invalid Bitcoin address"
                         label.isBlank() -> error = "Label is required"
                         else -> scope.launch {
+                            if (container.addressRepository.findByAddress(trimmed) != null) {
+                                error = "Address is already tracked"
+                                return@launch
+                            }
                             val now = System.currentTimeMillis()
                             container.addressRepository.add(
                                 AddressEntry(

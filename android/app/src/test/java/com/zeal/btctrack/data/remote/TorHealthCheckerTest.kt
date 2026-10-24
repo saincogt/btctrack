@@ -52,4 +52,26 @@ class TorHealthCheckerTest {
         assertFalse(status.ok)
         assertTrue(status.message.contains("proxy down"))
     }
+
+    @Test
+    fun `checkSafely reports invalid proxy settings instead of throwing`() = runBlocking {
+        val status = TorHealthChecker.checkSafely(
+            baseUrl = "http://mempoolhqx4isw62.onion/api/",
+            appSettings = AppSettings(socksHost = "127.0.0.1", socksPort = 9050, torRequired = false),
+        )
+
+        assertFalse(status.ok)
+        assertTrue(status.message.contains("torRequired"))
+    }
+
+    @Test
+    fun `checkSafely reports a non-onion endpoint instead of throwing`() = runBlocking {
+        val status = TorHealthChecker.checkSafely(
+            baseUrl = "https://mempool.space/api/",
+            appSettings = AppSettings(),
+        )
+
+        assertFalse(status.ok)
+        assertTrue(status.message.contains("onion"))
+    }
 }

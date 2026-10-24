@@ -57,4 +57,19 @@ class TorHealthChecker(
             )
         }
     }
+
+    companion object {
+        // Invalid settings (non-onion endpoint, bad proxy config) make the constructor throw;
+        // report them as an unhealthy status so callers never crash on a bad configuration.
+        suspend fun checkSafely(baseUrl: String, appSettings: AppSettings): TorHealthStatus =
+            try {
+                TorHealthChecker(baseUrl = baseUrl, appSettings = appSettings).check()
+            } catch (error: IllegalArgumentException) {
+                TorHealthStatus(
+                    ok = false,
+                    endpointHost = baseUrl,
+                    message = error.message ?: "Invalid Tor settings",
+                )
+            }
+    }
 }
