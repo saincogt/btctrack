@@ -66,4 +66,25 @@ class BalanceSnapshotDaoTest {
         assertEquals(250, snapshots.first().confirmedSats)
         assertEquals(20L, snapshots.first().fetchedAt)
     }
+
+    @Test
+    fun `deleteOrphans removes snapshots of untracked addresses`() = runBlocking {
+        database.addressDao().upsert(
+            com.zeal.btctrack.data.local.entity.AddressEntity(
+                id = "1", address = "addr-kept", label = "K", note = "", groupPath = "",
+                orderValue = 0, watchOnly = true, createdAt = 0L, updatedAt = 0L,
+            )
+        )
+        val dao = database.balanceSnapshotDao()
+        dao.upsertAll(listOf(snapshot("addr-kept"), snapshot("addr-gone")))
+
+        dao.deleteOrphans()
+
+        assertEquals(listOf("addr-kept"), dao.observeAll().first().map { it.address })
+    }
+
+    private fun snapshot(address: String) = BalanceSnapshotEntity(
+        address = address, confirmedSats = 1, unconfirmedSats = 0, txCount = 1,
+        fetchedAt = 1L, source = "onion", success = true, errorSummary = null,
+    )
 }

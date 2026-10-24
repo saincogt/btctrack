@@ -106,4 +106,19 @@ class AddressDaoTest {
         assertEquals(1, remaining.size)
         assertEquals("addr-keep", remaining.first().address)
     }
+
+    @Test
+    fun `replaceAll swaps the whole table`() = runBlocking {
+        val dao = database.addressDao()
+        dao.upsert(entity("old", "addr-old"))
+
+        dao.replaceAll(listOf(entity("n1", "addr-1"), entity("n2", "addr-2")))
+
+        assertEquals(listOf("addr-1", "addr-2"), dao.getAll().map { it.address }.sorted())
+    }
+
+    private fun entity(id: String, address: String) = AddressEntity(
+        id = id, address = address, label = id, note = "", groupPath = "",
+        orderValue = 0, watchOnly = true, createdAt = 0L, updatedAt = 0L,
+    )
 }

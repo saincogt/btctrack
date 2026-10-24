@@ -15,8 +15,7 @@ class AddressRepositoryImpl(
         addressDao.observeAll().map { entities -> entities.map { it.toDomain() } }
 
     override suspend fun replaceAll(entries: List<AddressEntry>) {
-        addressDao.clearAll()
-        addressDao.upsertAll(entries.map { it.toEntity() })
+        addressDao.replaceAll(entries.map { it.toEntity() })
     }
 
     override suspend fun findByAddress(address: String): AddressEntry? =

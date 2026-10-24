@@ -57,6 +57,8 @@ class RefreshAddressBalanceUseCaseTest {
         override suspend fun findByAddress(address: String): BalanceSnapshot? =
             stored.firstOrNull { it.address == address }
 
+        override suspend fun deleteOrphans() = Unit
+
         override suspend fun clearAll() {
             stored = emptyList()
         }

@@ -40,7 +40,7 @@ class AppContainer(context: Context) {
     val settingsRepository: SettingsRepository = SettingsRepositoryImpl(settingsStore)
 
     private val importService = AddressImportService()
-    val importAddressesUseCase = ImportAddressesUseCase(importService, addressRepository)
+    val importAddressesUseCase = ImportAddressesUseCase(importService, addressRepository, balanceRepository)
     val exportAddressesUseCase = ExportAddressesUseCase(addressRepository)
 
     suspend fun refreshAddress(address: String): BalanceSnapshot {

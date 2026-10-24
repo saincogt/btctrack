@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import androidx.room.Transaction
 import com.zeal.btctrack.data.local.entity.AddressEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -23,6 +24,13 @@ interface AddressDao {
 
     @Query("DELETE FROM addresses")
     suspend fun clearAll()
+
+    // Atomic so a failure mid-import cannot leave the table empty
+    @Transaction
+    suspend fun replaceAll(entities: List<AddressEntity>) {
+        clearAll()
+        upsertAll(entities)
+    }
 
     @Query("SELECT * FROM addresses WHERE address = :address LIMIT 1")
     suspend fun findByAddress(address: String): AddressEntity?

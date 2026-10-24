@@ -210,6 +210,7 @@ class RefreshTrackedAddressesUseCaseTest {
         }
         override suspend fun findByAddress(address: String): BalanceSnapshot? = null
         override suspend fun clearAll() = Unit
+        override suspend fun deleteOrphans() = Unit
     }
 
     private class FakeRefreshAddressBalanceUseCase(

@@ -24,4 +24,8 @@ class BalanceRepositoryImpl(
     override suspend fun clearAll() {
         balanceSnapshotDao.clearAll()
     }
+
+    override suspend fun deleteOrphans() {
+        balanceSnapshotDao.deleteOrphans()
+    }
 }

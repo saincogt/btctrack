@@ -23,4 +23,7 @@ interface BalanceSnapshotDao {
 
     @Query("DELETE FROM balance_snapshots")
     suspend fun clearAll()
+
+    @Query("DELETE FROM balance_snapshots WHERE address NOT IN (SELECT address FROM addresses)")
+    suspend fun deleteOrphans()
 }

@@ -8,4 +8,5 @@ interface BalanceRepository {
     suspend fun upsertAll(snapshots: List<BalanceSnapshot>)
     suspend fun findByAddress(address: String): BalanceSnapshot?
     suspend fun clearAll()
+    suspend fun deleteOrphans()
 }
