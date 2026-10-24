@@ -26,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.zeal.btctrack.AppContainer
 import com.zeal.btctrack.domain.model.AddressEntry
+import com.zeal.btctrack.domain.normalizeGroupPath
 import com.zeal.btctrack.ui.collectAsStateCompat
 import com.zeal.btctrack.ui.components.SuggestionTextField
 import com.zeal.btctrack.ui.groupSuggestions
@@ -149,7 +150,7 @@ fun EditAddressScreen(
                             container.addressRepository.update(
                                 current.copy(
                                     label = label.trim(),
-                                    groupPath = group.trim(),
+                                    groupPath = normalizeGroupPath(group),
                                     order = order.trim().toIntOrNull() ?: 9999,
                                     note = note.trim(),
                                     updatedAt = System.currentTimeMillis(),

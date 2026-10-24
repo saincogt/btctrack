@@ -137,4 +137,23 @@ class AddressTreeTest {
         val keys = flattenVisible(buildAddressTree(entries, emptyMap()), emptyMap()).map { item: FlatItem -> item.listKey() }
         assertEquals(2, keys.toSet().size)
     }
+
+    @Test
+    fun `whitespace-only groupPath is treated as a root leaf`() {
+        val tree = buildAddressTree(listOf(entry("addr1", "   ")), emptyMap())
+        assertEquals(1, tree.size)
+        assert(tree[0] is AddressTreeNode.Leaf)
+    }
+
+    @Test
+    fun `unnormalized paths land in the same group`() {
+        val tree = buildAddressTree(
+            listOf(entry("addr1", "Wallet/"), entry("addr2", " Wallet ")),
+            emptyMap(),
+        )
+        assertEquals(1, tree.size)
+        val group = tree[0] as AddressTreeNode.Group
+        assertEquals("Wallet", group.path)
+        assertEquals(2, group.children.size)
+    }
 }

@@ -1,6 +1,7 @@
 package com.zeal.btctrack.ui
 
 import com.zeal.btctrack.domain.model.AddressEntry
+import com.zeal.btctrack.domain.normalizeGroupPath
 
 // Existing group paths plus all their parent paths, filtered by query.
 fun groupSuggestions(entries: List<AddressEntry>, query: String): List<String> {
@@ -22,9 +23,8 @@ fun labelSuggestions(entries: List<AddressEntry>, group: String, query: String):
     return filterByQuery(distinctIgnoreCase(first + rest), query)
 }
 
-// Splits a group path into trimmed, non-empty segments so "Wallet / Sub/" equals "Wallet/Sub".
 private fun pathSegments(path: String): List<String> =
-    path.split("/").map { it.trim() }.filter { it.isNotEmpty() }
+    normalizeGroupPath(path).let { if (it.isEmpty()) emptyList() else it.split("/") }
 
 private fun distinctIgnoreCase(values: List<String>): List<String> = values.distinctBy { it.lowercase() }
 

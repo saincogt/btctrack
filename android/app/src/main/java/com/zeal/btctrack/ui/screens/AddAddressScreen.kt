@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.zeal.btctrack.AppContainer
 import com.zeal.btctrack.domain.AddressValidator
 import com.zeal.btctrack.domain.model.AddressEntry
+import com.zeal.btctrack.domain.normalizeGroupPath
 import com.zeal.btctrack.ui.collectAsStateCompat
 import com.zeal.btctrack.ui.components.SuggestionTextField
 import com.zeal.btctrack.ui.groupSuggestions
@@ -135,7 +136,7 @@ fun AddAddressScreen(
                                     address = trimmed,
                                     label = label.trim(),
                                     note = note.trim(),
-                                    groupPath = group.trim(),
+                                    groupPath = normalizeGroupPath(group),
                                     order = order.trim().toIntOrNull() ?: 9999,
                                     watchOnly = true,
                                     createdAt = now,

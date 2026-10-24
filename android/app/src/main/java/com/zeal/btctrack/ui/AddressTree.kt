@@ -2,6 +2,7 @@ package com.zeal.btctrack.ui
 
 import com.zeal.btctrack.domain.model.AddressEntry
 import com.zeal.btctrack.domain.model.BalanceSnapshot
+import com.zeal.btctrack.domain.normalizeGroupPath
 
 sealed class AddressTreeNode {
     data class Group(
@@ -29,7 +30,13 @@ fun buildAddressTree(
     entries: List<AddressEntry>,
     balancesByAddress: Map<String, BalanceSnapshot>,
     groupOrder: List<String> = emptyList(),
-): List<AddressTreeNode> = buildNodes("", entries, balancesByAddress, groupOrder)
+): List<AddressTreeNode> = buildNodes(
+    "",
+    // Normalize so legacy rows like "Wallet/" or "  " still land in the right place
+    entries.map { it.copy(groupPath = normalizeGroupPath(it.groupPath)) },
+    balancesByAddress,
+    groupOrder,
+)
 
 private fun buildNodes(
     parentPath: String,
