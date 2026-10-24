@@ -11,8 +11,10 @@ import com.zeal.btctrack.domain.repository.BalanceRepository
 import com.zeal.btctrack.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.fail
 import org.junit.Test
 
 class RefreshTrackedAddressesUseCaseTest {
@@ -47,14 +49,15 @@ class RefreshTrackedAddressesUseCaseTest {
             settingsRepository = settingsRepository,
             refreshAddressBalance = remoteUseCase::invoke,
             refreshOrderStrategy = FixedOrderStrategy(listOf(addressB, addressA)),
-            jitterPlanner = FixedJitterPlanner(listOf(10L, 20L)),
+            jitterPlanner = FixedJitterPlanner(listOf(5L, 10L, 20L)),
             delayStrategy = delayStrategy,
         )
 
         val result = useCase()
 
         assertEquals(listOf("bc1q-b", "bc1q-a"), remoteUseCase.calls)
-        assertEquals(listOf(10L, 20L), delayStrategy.recorded)
+        // First delay is the pre-first-request jitter
+        assertEquals(listOf(5L, 10L, 20L), delayStrategy.recorded)
         assertEquals(2, result.snapshots.size)
         assertEquals(listOf("bc1q-b", "bc1q-a"), result.snapshots.map { it.address })
         assertEquals(listOf("bc1q-b", "bc1q-a"), balanceRepository.upserted.flatMap { it }.map { it.address })
@@ -75,6 +78,76 @@ class RefreshTrackedAddressesUseCaseTest {
 
         assertEquals(0, result.snapshots.size)
         assertEquals(0, result.refreshedCount)
+    }
+
+    @Test
+    fun `skips an address whose refresh fails and keeps the rest`() = runBlocking {
+        val useCase = RefreshTrackedAddressesUseCase(
+            addressRepository = FakeAddressRepository(listOf(addressA, addressB)),
+            settingsRepository = FakeSettingsRepository(AppSettings()),
+            refreshAddressBalance = { address ->
+                if (address == "bc1q-a") error("network down") else snapshot(address, 200L)
+            },
+            refreshOrderStrategy = FixedOrderStrategy(listOf(addressA, addressB)),
+            jitterPlanner = FixedJitterPlanner(listOf(5L, 10L, 20L)),
+            delayStrategy = RecordingDelayStrategy(),
+        )
+
+        val result = useCase()
+
+        assertEquals(listOf("bc1q-b"), result.snapshots.map { it.address })
+    }
+
+    @Test
+    fun `propagates cancellation from the refresh call`() = runBlocking {
+        val calls = mutableListOf<String>()
+        val useCase = RefreshTrackedAddressesUseCase(
+            addressRepository = FakeAddressRepository(listOf(addressA, addressB)),
+            settingsRepository = FakeSettingsRepository(AppSettings()),
+            refreshAddressBalance = { address ->
+                calls += address
+                throw CancellationException("worker stopped")
+            },
+            refreshOrderStrategy = FixedOrderStrategy(listOf(addressA, addressB)),
+            jitterPlanner = FixedJitterPlanner(listOf(5L, 10L, 20L)),
+            delayStrategy = RecordingDelayStrategy(),
+        )
+
+        try {
+            useCase()
+            fail("expected CancellationException")
+        } catch (_: CancellationException) {
+        }
+        assertEquals(listOf("bc1q-a"), calls)
+    }
+
+    @Test
+    fun `propagates cancellation from the jitter delay`() = runBlocking {
+        val calls = mutableListOf<String>()
+        val balanceRepository = FakeBalanceRepository()
+        var sleeps = 0
+        val useCase = RefreshTrackedAddressesUseCase(
+            addressRepository = FakeAddressRepository(listOf(addressA, addressB)),
+            balanceRepository = balanceRepository,
+            settingsRepository = FakeSettingsRepository(AppSettings()),
+            refreshAddressBalance = { address -> calls += address; snapshot(address, 1L) },
+            refreshOrderStrategy = FixedOrderStrategy(listOf(addressA, addressB)),
+            jitterPlanner = FixedJitterPlanner(listOf(5L, 10L, 20L)),
+            delayStrategy = object : DelayStrategy {
+                override suspend fun sleep(durationMs: Long) {
+                    // Pre-first-request sleep succeeds, the one after the first address is cancelled
+                    if (sleeps++ == 1) throw CancellationException("worker stopped")
+                }
+            },
+        )
+
+        try {
+            useCase()
+            fail("expected CancellationException")
+        } catch (_: CancellationException) {
+        }
+        assertEquals(listOf("bc1q-a"), calls)
+        assertEquals(emptyList<List<BalanceSnapshot>>(), balanceRepository.upserted)
     }
 
     private fun snapshot(address: String, confirmedSats: Long) = BalanceSnapshot(

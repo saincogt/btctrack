@@ -10,6 +10,7 @@ import com.zeal.btctrack.domain.refresh.ShuffleRefreshOrderStrategy
 import com.zeal.btctrack.domain.repository.AddressRepository
 import com.zeal.btctrack.domain.repository.BalanceRepository
 import com.zeal.btctrack.domain.repository.SettingsRepository
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
 
 class RefreshTrackedAddressesUseCase(
@@ -32,13 +33,18 @@ class RefreshTrackedAddressesUseCase(
         // Pre-first-request jitter so the refresh burst start time is unpredictable
         delayStrategy.sleep(jitterPlanner.nextDelayMs(settings.jitterMinMs, settings.jitterMaxMs))
         val snapshots = ordered.mapNotNull { entry ->
-            try {
-                val snapshot = refreshAddressBalance(entry.address)
-                delayStrategy.sleep(jitterPlanner.nextDelayMs(settings.jitterMinMs, settings.jitterMaxMs))
-                snapshot
+            // Only the network call is guarded; cancellation must propagate so a stopped worker stops here
+            val snapshot = try {
+                refreshAddressBalance(entry.address)
+            } catch (e: CancellationException) {
+                throw e
             } catch (_: Exception) {
                 null
             }
+            if (snapshot != null) {
+                delayStrategy.sleep(jitterPlanner.nextDelayMs(settings.jitterMinMs, settings.jitterMaxMs))
+            }
+            snapshot
         }
 
         balanceRepository?.upsertAll(snapshots.filter { it.success })
