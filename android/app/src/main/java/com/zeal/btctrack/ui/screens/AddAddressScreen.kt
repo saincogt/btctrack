@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import com.zeal.btctrack.AppContainer
 import com.zeal.btctrack.domain.AddressValidator
 import com.zeal.btctrack.domain.model.AddressEntry
+import com.zeal.btctrack.ui.collectAsStateCompat
 import com.zeal.btctrack.ui.components.SuggestionTextField
 import com.zeal.btctrack.ui.groupSuggestions
 import com.zeal.btctrack.ui.labelSuggestions
@@ -45,7 +46,8 @@ fun AddAddressScreen(
 ) {
     val scope = rememberCoroutineScope()
     val scannedAddress by scannedAddressFlow.collectAsState()
-    val existing by container.addressRepository.observeAll().collectAsState(initial = emptyList())
+    val existing by remember(container) { container.addressRepository.observeAll() }
+        .collectAsStateCompat(emptyList())
 
     var address by remember { mutableStateOf("") }
     var label by remember { mutableStateOf("") }
@@ -91,14 +93,14 @@ fun AddAddressScreen(
                 value = label,
                 onValueChange = { label = it },
                 label = "Label (required)",
-                suggestions = labelSuggestions(existing, group, label),
+                suggestions = remember(existing, group, label) { labelSuggestions(existing, group, label) },
                 modifier = Modifier.fillMaxWidth(),
             )
             SuggestionTextField(
                 value = group,
                 onValueChange = { group = it },
                 label = "Group (e.g. Wallet/Account)",
-                suggestions = groupSuggestions(existing, group),
+                suggestions = remember(existing, group) { groupSuggestions(existing, group) },
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(

@@ -91,4 +91,35 @@ class AddressSuggestionsTest {
     fun `label suggestions skip blank labels`() {
         assertEquals(listOf("A"), labelSuggestions(listOf(entry("a1", "", ""), entry("a2", "", "A")), "", ""))
     }
+
+    @Test
+    fun `group suggestions normalize stray slashes and spaces`() {
+        val entries = listOf(
+            entry("a1", "Wallet/"),
+            entry("a2", "Wallet//Sub"),
+            entry("a3", " Wallet / Sub2 "),
+        )
+        assertEquals(listOf("Wallet", "Wallet/Sub", "Wallet/Sub2"), groupSuggestions(entries, ""))
+    }
+
+    @Test
+    fun `group suggestions dedupe case-insensitively`() {
+        val entries = listOf(entry("a1", "wallet"), entry("a2", "Wallet"))
+        assertEquals(listOf("Wallet"), groupSuggestions(entries, ""))
+    }
+
+    @Test
+    fun `label suggestions dedupe case-insensitively`() {
+        val entries = listOf(entry("a1", "", "savings"), entry("a2", "", "Savings"))
+        assertEquals(listOf("Savings"), labelSuggestions(entries, "", ""))
+    }
+
+    @Test
+    fun `label suggestions match current group after normalizing it`() {
+        val entries = listOf(
+            entry("a1", "Other", "Alpha"),
+            entry("a2", "Ledger/Main", "Zulu"),
+        )
+        assertEquals(listOf("Zulu", "Alpha"), labelSuggestions(entries, "Ledger / Main/", ""))
+    }
 }

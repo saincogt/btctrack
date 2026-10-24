@@ -16,7 +16,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,6 +26,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.zeal.btctrack.AppContainer
 import com.zeal.btctrack.domain.model.AddressEntry
+import com.zeal.btctrack.ui.collectAsStateCompat
 import com.zeal.btctrack.ui.components.SuggestionTextField
 import com.zeal.btctrack.ui.groupSuggestions
 import com.zeal.btctrack.ui.labelSuggestions
@@ -47,7 +47,8 @@ fun EditAddressScreen(
     var note by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
-    val existing by container.addressRepository.observeAll().collectAsState(initial = emptyList())
+    val existing by remember(container) { container.addressRepository.observeAll() }
+        .collectAsStateCompat(emptyList())
 
     LaunchedEffect(address) {
         val found = container.addressRepository.findByAddress(address)
@@ -113,7 +114,7 @@ fun EditAddressScreen(
                 value = label,
                 onValueChange = { label = it; error = "" },
                 label = "Label (required)",
-                suggestions = labelSuggestions(existing, group, label),
+                suggestions = remember(existing, group, label) { labelSuggestions(existing, group, label) },
                 modifier = Modifier.fillMaxWidth(),
                 isError = error.isNotEmpty(),
                 supportingText = if (error.isNotEmpty()) ({ Text(error) }) else null,
@@ -122,7 +123,7 @@ fun EditAddressScreen(
                 value = group,
                 onValueChange = { group = it },
                 label = "Group (e.g. Wallet/Account)",
-                suggestions = groupSuggestions(existing, group),
+                suggestions = remember(existing, group) { groupSuggestions(existing, group) },
                 modifier = Modifier.fillMaxWidth(),
             )
             OutlinedTextField(

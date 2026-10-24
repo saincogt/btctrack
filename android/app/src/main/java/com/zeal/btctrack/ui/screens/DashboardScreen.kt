@@ -61,8 +61,8 @@ import kotlinx.coroutines.launch
 fun DashboardScreen(container: AppContainer) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val addresses by container.addressRepository.observeAll().collectAsStateCompat(emptyList())
-    val balances by container.balanceRepository.observeAll().collectAsStateCompat(emptyList())
+    val addresses by remember(container) { container.addressRepository.observeAll() }.collectAsStateCompat(emptyList())
+    val balances by remember(container) { container.balanceRepository.observeAll() }.collectAsStateCompat(emptyList())
     val settings by container.settingsRepository.observe().collectAsStateCompat(null)
     val torReachable by container.torReachable.collectAsStateCompat(false)
 

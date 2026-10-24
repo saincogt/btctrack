@@ -105,8 +105,8 @@ fun GroupedAddressesScreen(
     }
 
     val settings by container.settingsRepository.observe().collectAsStateCompat(null)
-    val addresses by container.addressRepository.observeAll().collectAsStateCompat(emptyList())
-    val balances by container.balanceRepository.observeAll().collectAsStateCompat(emptyList())
+    val addresses by remember(container) { container.addressRepository.observeAll() }.collectAsStateCompat(emptyList())
+    val balances by remember(container) { container.balanceRepository.observeAll() }.collectAsStateCompat(emptyList())
     val torReachable by container.torReachable.collectAsStateCompat(false)
 
     val balanceUnit = settings?.balanceUnit ?: "sats"

@@ -33,9 +33,8 @@ fun SuggestionTextField(
     supportingText: (@Composable () -> Unit)? = null,
 ) {
     var fieldValue by remember { mutableStateOf(TextFieldValue(value, TextRange(value.length))) }
-    if (fieldValue.text != value) {
-        fieldValue = TextFieldValue(value, TextRange(value.length))
-    }
+    // Value changed by the caller (e.g. loaded from storage): show it with the cursor at the end
+    val shown = if (fieldValue.text == value) fieldValue else TextFieldValue(value, TextRange(value.length))
     var focused by remember { mutableStateOf(false) }
     var dismissed by remember { mutableStateOf(false) }
     val visible = suggestions.take(MAX_SUGGESTIONS)
@@ -43,13 +42,14 @@ fun SuggestionTextField(
 
     ExposedDropdownMenuBox(
         expanded = expanded,
-        onExpandedChange = { dismissed = !it },
+        // Tapping the field only ever opens the menu; it closes on pick or outside tap
+        onExpandedChange = { if (it) dismissed = false },
         modifier = modifier,
     ) {
         OutlinedTextField(
-            value = fieldValue,
+            value = shown,
             onValueChange = {
-                if (it.text != fieldValue.text) dismissed = false
+                if (it.text != shown.text) dismissed = false
                 fieldValue = it
                 onValueChange(it.text)
             },
@@ -57,7 +57,10 @@ fun SuggestionTextField(
             modifier = Modifier
                 .fillMaxWidth()
                 .menuAnchor(MenuAnchorType.PrimaryEditable)
-                .onFocusChanged { focused = it.isFocused },
+                .onFocusChanged {
+                    if (it.isFocused && !focused) dismissed = false
+                    focused = it.isFocused
+                },
             isError = isError,
             supportingText = supportingText,
             singleLine = true,
