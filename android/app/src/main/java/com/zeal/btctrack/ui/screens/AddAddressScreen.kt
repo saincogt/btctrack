@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import com.zeal.btctrack.AppContainer
 import com.zeal.btctrack.domain.AddressValidator
 import com.zeal.btctrack.domain.model.AddressEntry
+import com.zeal.btctrack.ui.components.SuggestionTextField
+import com.zeal.btctrack.ui.groupSuggestions
+import com.zeal.btctrack.ui.labelSuggestions
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -42,6 +45,7 @@ fun AddAddressScreen(
 ) {
     val scope = rememberCoroutineScope()
     val scannedAddress by scannedAddressFlow.collectAsState()
+    val existing by container.addressRepository.observeAll().collectAsState(initial = emptyList())
 
     var address by remember { mutableStateOf("") }
     var label by remember { mutableStateOf("") }
@@ -83,19 +87,19 @@ fun AddAddressScreen(
             Button(onClick = onScanQr, modifier = Modifier.fillMaxWidth()) {
                 Text("Scan QR code")
             }
-            OutlinedTextField(
+            SuggestionTextField(
                 value = label,
                 onValueChange = { label = it },
-                label = { Text("Label (required)") },
+                label = "Label (required)",
+                suggestions = labelSuggestions(existing, group, label),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
             )
-            OutlinedTextField(
+            SuggestionTextField(
                 value = group,
                 onValueChange = { group = it },
-                label = { Text("Group (e.g. Wallet/Account)") },
+                label = "Group (e.g. Wallet/Account)",
+                suggestions = groupSuggestions(existing, group),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
             )
             OutlinedTextField(
                 value = order,

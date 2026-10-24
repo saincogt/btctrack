@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -26,6 +27,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.zeal.btctrack.AppContainer
 import com.zeal.btctrack.domain.model.AddressEntry
+import com.zeal.btctrack.ui.components.SuggestionTextField
+import com.zeal.btctrack.ui.groupSuggestions
+import com.zeal.btctrack.ui.labelSuggestions
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +47,7 @@ fun EditAddressScreen(
     var note by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
     var loading by remember { mutableStateOf(true) }
+    val existing by container.addressRepository.observeAll().collectAsState(initial = emptyList())
 
     LaunchedEffect(address) {
         val found = container.addressRepository.findByAddress(address)
@@ -104,21 +109,21 @@ fun EditAddressScreen(
                 enabled = false,
                 singleLine = true,
             )
-            OutlinedTextField(
+            SuggestionTextField(
                 value = label,
                 onValueChange = { label = it; error = "" },
-                label = { Text("Label (required)") },
+                label = "Label (required)",
+                suggestions = labelSuggestions(existing, group, label),
                 modifier = Modifier.fillMaxWidth(),
                 isError = error.isNotEmpty(),
                 supportingText = if (error.isNotEmpty()) ({ Text(error) }) else null,
-                singleLine = true,
             )
-            OutlinedTextField(
+            SuggestionTextField(
                 value = group,
                 onValueChange = { group = it },
-                label = { Text("Group (e.g. Wallet/Account)") },
+                label = "Group (e.g. Wallet/Account)",
+                suggestions = groupSuggestions(existing, group),
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
             )
             OutlinedTextField(
                 value = order,
